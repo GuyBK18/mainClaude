@@ -3,7 +3,7 @@ import { SOURCE_LABEL } from "./types";
 import { describeFailure } from "./http";
 import { searchGoogleBooks } from "./google-books";
 import { searchOpenLibrary } from "./open-library";
-import { cleanIsbn, isIsbnQuery, normalizeTitle, surname, toIsbn13 } from "./text";
+import { cleanIsbn, editionLanguageFor, isIsbnQuery, normalizeTitle, surname, toIsbn13 } from "./text";
 
 const MAX_RESULTS = 10;
 
@@ -28,8 +28,8 @@ function combine(a: BookCandidate, b: BookCandidate): BookCandidate {
     pageCount: gb?.pageCount ?? a.pageCount ?? b.pageCount,
     publisher: a.publisher ?? b.publisher,
     isbn: a.isbn ?? b.isbn,
-    language: a.language ?? b.language,
     coverUrl: ol?.coverUrl ?? a.coverUrl ?? b.coverUrl,
+    language: a.language ?? b.language,
     snippet: gb?.snippet ?? a.snippet ?? b.snippet,
     editionCount: ol?.editionCount,
     // The average with more votes behind it says more.
@@ -67,10 +67,11 @@ export function mergeCandidates(lists: BookCandidate[][]): BookCandidate[] {
 export async function searchCatalogs(rawQuery: string): Promise<SearchResponse> {
   const query = rawQuery.trim().replace(/\s+/g, " ");
   const isbn = isIsbnQuery(query) ? toIsbn13(cleanIsbn(query)) : undefined;
+  const lang = editionLanguageFor(query);
 
   const sources: [SourceId, Promise<BookCandidate[]>][] = [
-    ["googlebooks", searchGoogleBooks(query, isbn)],
-    ["openlibrary", searchOpenLibrary(query, isbn)],
+    ["googlebooks", searchGoogleBooks(query, { isbn, lang })],
+    ["openlibrary", searchOpenLibrary(query, { isbn, lang })],
   ];
   const settled = await Promise.allSettled(sources.map(([, p]) => p));
 
@@ -87,5 +88,5 @@ export async function searchCatalogs(rawQuery: string): Promise<SearchResponse> 
     (error as Error & { notes?: string[] }).notes = notes;
     throw error;
   }
-  return { candidates: mergeCandidates(lists), notes };
+  return { candidates: mergeCandidates(lists).map((c) => ({ ...c, lang })), notes, lang };
 }

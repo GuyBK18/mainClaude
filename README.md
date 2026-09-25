@@ -62,7 +62,9 @@ Motion: springs for layout shifts (grid filtering, tab and view changes), 0.98 s
 
 ## Adding books
 
-`Add book` opens on **Search**. Type a title, an author or an ISBN. Hebrew titles are sent as typed; how many Hebrew books come back depends on the catalogs, and Google Books usually has more of them than Open Library. Google Books and Open Library are searched together, the same book from both merges into one row, and you pick the right edition. Picking it reads every catalog for that book and fills the form:
+`Add book` opens on **Search**. Type a title, an author or an ISBN. Google Books and Open Library are searched together, the same book from both merges into one row, and you pick the right one. Picking it reads every catalog for that book and fills the form.
+
+Books come in English. The search asks both catalogs for English editions only, and the details step takes the ISBN, publisher, pages, description and covers from English editions. To get a Hebrew edition, type the title in Hebrew (or an Israeli ISBN, which starts 978-965). An ISBN is looked up as is. Some fields hold for every edition and are taken from any of them: the Goodreads rating, series, genres and first publication year. Every description is also checked by its text, since catalogs sometimes mislabel an edition's language. If no catalog has an English description, the field stays empty and the dialog says so. For a Hebrew edition with no Hebrew description, the English one is used.
 
 | Field | Where it comes from, in order |
 | --- | --- |
@@ -71,11 +73,11 @@ Motion: springs for layout shifts (grid filtering, tab and view changes), 0.98 s
 | Genres | Goodreads genres, Google categories and Open Library subjects, mapped to the app's ten genres |
 | Pages | Goodreads (the edition), then Google Books, then Open Library's median |
 | Year | First publication: Open Library, then Goodreads, then the edition year from Google |
-| Description | Google Books, then Goodreads, then Open Library |
-| Cover | Goodreads, then Open Library, then Google Books |
-| Publisher, ISBN, language | Google Books first |
+| Description | Google Books, then Goodreads, then Open Library, in the edition's language |
+| Cover | Two images of English editions: Goodreads, then Open Library, then Google Books. You pick one of them or a designed cover |
+| Publisher, ISBN | The English edition in Google Books first, then Goodreads |
 
-Under the preview the dialog says which catalog gave which field, and notes any catalog that did not answer. You still choose the status, the format and your own rating, and every field stays editable before you save. The description appears on the book page under **About the book**.
+Under the preview the dialog says which catalog gave which field, and notes any catalog that did not answer. Under **Your copy** there are three covers side by side: two images found in the catalogs and one typeset cover in the library's own palettes, the same kind the seed books use. Click one or use the arrow keys. A cover image that fails to load drops out of the row. You still choose the status, the format and your own rating, and every field stays editable before you save. The description appears on the book page under **About the book**.
 
 **Import from URL** takes a Goodreads book page (full record), any link with an ISBN such as Open Library or Amazon (full record), or any other book link, which is searched by the title in its address.
 
@@ -83,7 +85,7 @@ Under the preview the dialog says which catalog gave which field, and notes any 
 
 The browser calls three routes in `app/api/`: `books/search`, `books/details` and `cover`. They run on your machine and call the catalogs from there, which avoids browser cross-origin limits. The `cover` route passes a cover image through the app's own address so the page can read its colors for the ambient glow. It only accepts known cover hosts.
 
-Goodreads has no public API. The importer reads the public book page, the way a browser does, one page per book you pick. This goes against a strict reading of Goodreads' terms of use, and it breaks if Goodreads changes its pages. The parser reads three layers (JSON-LD, the page's Next.js data, then the visible HTML), so a partial change still leaves most fields. To skip Goodreads, set `LUMINAREAD_GOODREADS=off` in `.env.local`. See `.env.example` for this and an optional Google Books API key.
+Goodreads has no public API. The importer reads the public book page, the way a browser does, one page per book you pick. Each Goodreads page is one edition. The importer tries the English edition's ISBN first, then a title search, and a page in another language only lends its rating, series and genres. This goes against a strict reading of Goodreads' terms of use, and it breaks if Goodreads changes its pages. The parser reads three layers (JSON-LD, the page's Next.js data, then the visible HTML), so a partial change still leaves most fields. To skip Goodreads, set `LUMINAREAD_GOODREADS=off` in `.env.local`. See `.env.example` for this and an optional Google Books API key.
 
 Code: `lib/metadata/` has one file per catalog, plus `search.ts` (merging results) and `details.ts` (picking fields). The tests in `lib/metadata/__tests__/` run the parsers against saved responses. The base URL of every catalog can be changed through environment variables (`GOOGLE_BOOKS_API`, `OPEN_LIBRARY_BASE`, `OPEN_LIBRARY_COVERS`, `GOODREADS_BASE`, `WIKIDATA_SPARQL`), which is how the importer was tested against a local mock.
 

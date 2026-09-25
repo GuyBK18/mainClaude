@@ -33,7 +33,29 @@
    "ratings_count": 122,
    "id_goodreads": [
     "50202953"
-   ]
+   ],
+   "editions": {
+    "numFound": 12,
+    "start": 0,
+    "numFoundExact": true,
+    "docs": [
+     {
+      "key": "/books/OL28999999M",
+      "title": "Piranesi",
+      "language": [
+       "eng"
+      ],
+      "isbn": [
+       "1635575621",
+       "9781635575637"
+      ],
+      "cover_i": 10523448,
+      "publisher": [
+       "Bloomsbury Publishing"
+      ]
+     }
+    ]
+   }
   },
   {
    "key": "/works/OL1W",

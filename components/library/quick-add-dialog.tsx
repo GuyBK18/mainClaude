@@ -7,6 +7,7 @@ import { Link2, Loader2, PenLine, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { BookCandidate, BookDetails } from "@/lib/metadata/types";
 import { fetchDetails } from "@/lib/metadata/client";
+import { generatedCover } from "@/lib/cover";
 import { useLibrary } from "@/lib/library-context";
 import { useUI } from "@/lib/ui-context";
 import { easeOut } from "@/lib/motion";
@@ -16,6 +17,7 @@ import { Input, Label } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
 import { BookForm, emptyValues, toBookInput, validate, valuesFromDetails, type BookFormValues } from "./book-form";
 import { BookSearch } from "./book-search";
+import { CoverPicker } from "./cover-picker";
 import { DetailsPreview } from "./details-preview";
 
 type Mode = "search" | "manual" | "url";
@@ -95,6 +97,7 @@ export function QuickAddDialog() {
     <>
       <DetailsPreview
         details={details}
+        cover={{ ...generatedCover(values.title || details.title), url: values.coverUrl.trim() || undefined }}
         onBack={() => {
           setDetails(null);
           setError(null);
@@ -102,7 +105,15 @@ export function QuickAddDialog() {
       />
       <div className="mt-8 border-t border-foreground pt-5">
         <p className="label-meta mb-5 text-foreground">Your copy</p>
-        <BookForm values={values} onChange={setValues} autoFocus={false} />
+        <div className="grid gap-6">
+          <CoverPicker
+            details={details}
+            title={values.title}
+            value={values.coverUrl}
+            onChange={(coverUrl) => setValues((v) => ({ ...v, coverUrl }))}
+          />
+          <BookForm values={values} onChange={setValues} autoFocus={false} />
+        </div>
       </div>
     </>
   );

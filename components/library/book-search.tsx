@@ -18,7 +18,7 @@ function Meta({ c }: { c: BookCandidate }) {
     c.pageCount ? `${c.pageCount} pages` : null,
     c.publisher,
     c.editionCount && c.editionCount > 1 ? `${c.editionCount} editions` : null,
-    c.language && c.language !== "en" ? languageName(c.language) : null,
+    c.language && c.language !== (c.lang ?? "en") ? languageName(c.language) : null,
     c.isbn ? `ISBN ${c.isbn}` : null,
   ].filter(Boolean);
   if (!parts.length) return null;
@@ -227,7 +227,12 @@ export function BookSearch({
 
       {results && results.length > 0 && (
         <>
-          <p className="mt-5 mb-1 px-3 label-meta">Pick the right book</p>
+          <div className="mt-5 mb-1 flex items-baseline justify-between gap-4 px-3">
+            <p className="label-meta">Pick the right book</p>
+            <p className="font-display text-[11px] text-muted-foreground">
+              {results[0].lang === "he" ? "Hebrew editions" : "English editions"}
+            </p>
+          </div>
           <ul className={cn("transition-opacity duration-150", searching && "opacity-50")}>
             {results.map((c, i) => (
               <ResultRow
@@ -253,7 +258,8 @@ export function BookSearch({
       {!results && !searching && !error && (
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
           Search Google Books and Open Library at once. Picking a result also reads Goodreads for the rating, series
-          and genres, and fills the form for you to check.
+          and genres, and fills the form for you to check. Results are English editions. Type the title in Hebrew
+          to get Hebrew editions.
         </p>
       )}
     </div>

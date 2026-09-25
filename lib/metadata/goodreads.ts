@@ -4,7 +4,7 @@
  * the Next.js data the page is built from, and finally the visible HTML. If Goodreads
  * changes its markup, whatever still parses is used and the rest is left empty.
  */
-import type { PartialDetails, PublicRating } from "./types";
+import type { EditionLanguage, PartialDetails, PublicRating } from "./types";
 import { endpoints, getText, HttpError } from "./http";
 import { decodeEntities, htmlToParagraphs, languageCode, normalizeTitle, stripTags, surname, toIsbn13, yearFrom } from "./text";
 
@@ -215,9 +215,21 @@ function matches(hit: GoodreadsSearchHit, title: string, author?: string) {
   return titleOk && authorOk;
 }
 
+/** Keeps what holds for every edition of the book and drops what belongs to this printing. */
+export function workOnly(page: PartialDetails): PartialDetails {
+  return { ...page, pageCount: undefined, publisher: undefined, isbn: undefined, description: undefined, coverUrl: undefined, workOnly: true };
+}
+
+/** Goodreads serves a placeholder image for books without a cover. */
+function realCover(url: string | undefined) {
+  return url && !/\/nophoto\//.test(url) ? url : undefined;
+}
+
 /**
- * Finds the book on Goodreads: a known URL or id first, then the ISBN redirect,
- * then a title and author search. Throws only when Goodreads itself failed.
+ * Finds the book's Goodreads page in the wanted language: a given URL first, then the
+ * ISBN redirect, then a title and author search, then the ids Open Library links to.
+ * Each Goodreads page is one edition, so a page in another language only lends its
+ * rating, series, genres and first publication year. Throws only when Goodreads itself failed.
  */
 export async function goodreadsLookup(q: {
   url?: string;
@@ -225,25 +237,39 @@ export async function goodreadsLookup(q: {
   isbn?: string;
   title: string;
   author?: string;
+  lang?: EditionLanguage;
 }): Promise<PartialDetails | null> {
   const base = endpoints.goodreads;
   let lastError: unknown = null;
+  let otherLanguage: PartialDetails | null = null;
+
   const attempt = async (url: string) => {
     try {
-      return await readPage(url);
+      const page = await readPage(url);
+      if (page) page.coverUrl = realCover(page.coverUrl);
+      return page;
     } catch (error) {
       if (!(error instanceof HttpError && error.status === 404)) lastError = error;
       return null;
     }
   };
+  // A page with no language stated is taken at its word; one in another language is held back.
+  const inLanguage = (page: PartialDetails | null) => {
+    if (!page) return null;
+    if (!q.lang || !page.language || page.language === q.lang) return page;
+    otherLanguage ??= page;
+    return null;
+  };
 
-  if (q.url) return attempt(q.url);
-  for (const id of q.ids?.slice(0, 2) ?? []) {
-    const found = await attempt(`${base}/book/show/${encodeURIComponent(id)}`);
-    if (found) return found;
+  if (q.url) {
+    const page = await attempt(q.url);
+    if (page) return inLanguage(page) ?? workOnly(page);
+    if (lastError) throw lastError;
+    return null;
   }
+
   if (q.isbn) {
-    const found = await attempt(`${base}/book/isbn/${q.isbn}`);
+    const found = inLanguage(await attempt(`${base}/book/isbn/${q.isbn}`));
     if (found) return found;
   }
 
@@ -253,13 +279,25 @@ export async function goodreadsLookup(q: {
     const hit = parseGoodreadsSearch(text, base).find((h) => matches(h, q.title, q.author));
     if (hit) {
       const page = await attempt(hit.url);
+      const found = inLanguage(page);
+      if (found) return found;
       // The search row alone still carries the rating and cover.
-      return page ?? { title: hit.title, rating: hit.rating, coverUrl: hit.coverUrl, url: hit.url, publishedYear: hit.year };
+      if (!page && !otherLanguage) {
+        return { title: hit.title, rating: hit.rating, coverUrl: realCover(hit.coverUrl), url: hit.url, publishedYear: hit.year };
+      }
     }
   } catch (error) {
     lastError = error;
   }
 
+  if (!otherLanguage) {
+    for (const id of q.ids?.slice(0, 2) ?? []) {
+      const found = inLanguage(await attempt(`${base}/book/show/${encodeURIComponent(id)}`));
+      if (found) return found;
+    }
+  }
+
+  if (otherLanguage) return workOnly(otherLanguage);
   if (lastError) throw lastError;
   return null;
 }

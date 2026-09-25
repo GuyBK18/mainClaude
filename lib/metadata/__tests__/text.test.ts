@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   decodeEntities,
+  editionLanguageFor,
+  textLanguage,
   htmlToParagraphs,
   isIsbnQuery,
   languageCode,
@@ -46,7 +48,29 @@ describe("text helpers", () => {
   it("maps language codes and names", () => {
     expect(languageCode("heb")).toBe("he");
     expect(languageCode("English")).toBe("en");
+    expect(languageCode("Polish")).toBe("pl");
+    expect(languageCode("English (US)")).toBe("en");
+    // A declared language it does not know is still not English.
+    expect(languageCode("Klingon")).toBe("other");
     expect(languageName("he")).toBe("Hebrew");
+    expect(languageName("other")).toBeUndefined();
+  });
+
+  it("asks for English editions unless the query is Hebrew or an Israeli ISBN", () => {
+    expect(editionLanguageFor("golden son")).toBe("en");
+    expect(editionLanguageFor("בן הזהב")).toBe("he");
+    expect(editionLanguageFor("978-965-07-1234-5")).toBe("he");
+    expect(editionLanguageFor("9780441478125")).toBe("en");
+  });
+
+  it("tells English, Hebrew and other passages apart", () => {
+    expect(textLanguage("Darrow is a Red, a member of the lowest caste in the color-coded society of the future. He works in the mines.")).toBe("en");
+    expect(
+      textLanguage("Człowiek może stać się potworem, ale żaden potwór nie stanie się człowiekiem. Darrow wspina się coraz wyżej po szczeblach kariery."),
+    ).toBe("other");
+    expect(textLanguage("Darrow ist ein Roter, ein Mitglied der niedrigsten Kaste in der farbcodierten Gesellschaft der Zukunft.")).toBe("other");
+    expect(textLanguage("דארו הוא אדום, בן למעמד הנמוך ביותר בחברה של העתיד, והוא עובד במכרות של מאדים.")).toBe("he");
+    expect(textLanguage("Short blurb.")).toBeUndefined();
   });
 });
 

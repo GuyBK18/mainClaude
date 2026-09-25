@@ -110,10 +110,13 @@ export function BookCover({
   book,
   className,
   elevated = false,
+  onImageError,
 }: {
   book: CoverBook;
   className?: string;
   elevated?: boolean;
+  /** Called when the image fails to load; the cover falls back to the typeset design either way. */
+  onImageError?: (url: string) => void;
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const url = book.cover.url && book.cover.url !== failedUrl ? book.cover.url : null;
@@ -133,7 +136,15 @@ export function BookCover({
       {url ? (
         // Remote covers come from arbitrary hosts, so next/image's allowlist does not fit here.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="absolute inset-0 size-full object-cover" onError={() => setFailedUrl(url)} />
+        <img
+          src={url}
+          alt=""
+          className="absolute inset-0 size-full object-cover"
+          onError={() => {
+            setFailedUrl(url);
+            onImageError?.(url);
+          }}
+        />
       ) : (
         <TypesetCover book={book} />
       )}

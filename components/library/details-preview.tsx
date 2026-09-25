@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowLeft, Info } from "lucide-react";
+import type { CoverArt } from "@/types/reading";
 import type { BookDetails, DetailField, SourceId } from "@/lib/metadata/types";
 import { SOURCE_LABEL } from "@/lib/metadata/types";
 import { generatedCover } from "@/lib/cover";
@@ -30,9 +31,18 @@ function provenanceLine(provenance: BookDetails["provenance"]) {
   return [...bySource.entries()].map(([source, fields]) => `${SOURCE_LABEL[source]}: ${fields.join(", ")}.`).join(" ");
 }
 
-export function DetailsPreview({ details, onBack }: { details: BookDetails; onBack?: () => void }) {
+export function DetailsPreview({
+  details,
+  cover: chosen,
+  onBack,
+}: {
+  details: BookDetails;
+  /** The cover the reader picked; defaults to the first one found. */
+  cover?: CoverArt;
+  onBack?: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const cover = { ...generatedCover(details.title), url: details.coverUrl };
+  const cover = chosen ?? { ...generatedCover(details.title), url: details.coverUrl };
   const paragraphs = details.description?.split(/\n{2,}/) ?? [];
   const facts = [
     details.pageCount ? `${details.pageCount} pages` : null,
@@ -55,7 +65,7 @@ export function DetailsPreview({ details, onBack }: { details: BookDetails; onBa
       )}
 
       <div className="flex gap-5">
-        <BookCover book={{ title: details.title, author: details.author, cover, series: details.series }} elevated className="w-24 shrink-0 sm:w-28" />
+        <BookCover book={{ title: details.title, author: details.author, cover, series: details.series }} elevated className="w-24 shrink-0 self-start sm:w-28" />
         <div className="min-w-0">
           {details.genres.length > 0 && <p className="label-meta">{details.genres.join(" / ")}</p>}
           <h3 dir="auto" className="mt-2 font-serif text-[24px] leading-tight">

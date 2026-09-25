@@ -1,3 +1,5 @@
+import type { EditionLanguage } from "./types";
+
 const NAMED: Record<string, string> = {
   amp: "&",
   lt: "<",
@@ -148,22 +150,60 @@ const ISO_639_2: Record<string, string> = {
   swe: "sv",
   kor: "ko",
   yid: "yi",
+  cze: "cs",
+  ces: "cs",
+  tur: "tr",
+  gre: "el",
+  ell: "el",
+  hun: "hu",
+  rum: "ro",
+  ron: "ro",
+  ukr: "uk",
+  dan: "da",
+  nor: "no",
+  fin: "fi",
+  cat: "ca",
+  bul: "bg",
+  hrv: "hr",
+  srp: "sr",
+  slo: "sk",
+  slk: "sk",
+  slv: "sl",
+  lit: "lt",
+  lav: "lv",
+  est: "et",
+  per: "fa",
+  fas: "fa",
+  hin: "hi",
+  ind: "id",
+  vie: "vi",
+  tha: "th",
+  lat: "la",
 };
+// Names like "Polish" are matched against these codes. Anything declared but not listed is
+// treated as a language of its own, never as English.
+const NAMED_CODES = [...new Set(Object.values(ISO_639_2))];
 
-/** "he", "heb" or "Hebrew" in; ISO 639-1 out. */
+/** "he", "heb" or "Hebrew" in; ISO 639-1 out. An unrecognized name comes back as "other". */
 export function languageCode(value: string | undefined) {
   if (!value) return undefined;
   const v = value.trim().toLowerCase();
+  if (!v) return undefined;
   if (v.length === 2) return v;
-  if (v.length === 3) return ISO_639_2[v];
-  for (const code of Object.values(ISO_639_2)) {
+  if (v.length === 3) return ISO_639_2[v] ?? "other";
+  for (const code of NAMED_CODES) {
     if (LANGUAGE_NAMES.of(code)?.toLowerCase() === v) return code;
   }
-  return undefined;
+  // "English (US)", "Hebrew; English"
+  const first = v.split(/[\s(;,/]/)[0];
+  for (const code of NAMED_CODES) {
+    if (LANGUAGE_NAMES.of(code)?.toLowerCase() === first) return code;
+  }
+  return "other";
 }
 
 export function languageName(code: string | undefined) {
-  if (!code) return undefined;
+  if (!code || code === "other") return undefined;
   try {
     return LANGUAGE_NAMES.of(code);
   } catch {
@@ -173,4 +213,34 @@ export function languageName(code: string | undefined) {
 
 export function httpsUrl(url: string | undefined) {
   return url?.replace(/^http:\/\//, "https://");
+}
+
+/** English unless the query is written in Hebrew or is an ISBN from Israel's 965 group. */
+export function editionLanguageFor(query: string): EditionLanguage {
+  if (hasHebrew(query)) return "he";
+  if (isIsbnQuery(query) && toIsbn13(cleanIsbn(query))?.startsWith("978965")) return "he";
+  return "en";
+}
+
+export const MARC_LANGUAGE: Record<EditionLanguage, string> = { en: "eng", he: "heb" };
+
+const ENGLISH_WORDS = new Set(
+  "the and of to a in is was his her he she it that with for as on by from but not be this are an at who their they into its has have had one when what".split(
+    " ",
+  ),
+);
+
+/**
+ * The language a passage reads as: Hebrew by its script, English by its function words and
+ * the absence of accented letters. Returns undefined when the text is too short to tell.
+ */
+export function textLanguage(text: string | undefined): EditionLanguage | "other" | undefined {
+  const letters = text?.match(/\p{L}/gu) ?? [];
+  if (letters.length < 40) return undefined;
+  const hebrew = letters.filter((ch) => /[\u0590-\u05FF]/.test(ch)).length;
+  if (hebrew / letters.length > 0.5) return "he";
+  const ascii = letters.filter((ch) => /[a-z]/i.test(ch)).length;
+  const words = text!.toLowerCase().match(/[\p{L}']+/gu) ?? [];
+  const common = words.filter((w) => ENGLISH_WORDS.has(w)).length;
+  return ascii / letters.length > 0.97 && common / words.length > 0.12 ? "en" : "other";
 }

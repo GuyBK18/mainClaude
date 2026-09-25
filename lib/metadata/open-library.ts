@@ -1,6 +1,6 @@
-import type { BookCandidate, PartialDetails } from "./types";
+import type { BookCandidate, EditionLanguage, PartialDetails } from "./types";
 import { endpoints, getJSON } from "./http";
-import { htmlToParagraphs, languageCode, toIsbn13 } from "./text";
+import { htmlToParagraphs, languageCode, MARC_LANGUAGE, normalizeTitle, toIsbn13 } from "./text";
 
 const FIELDS = [
   "key",
@@ -18,7 +18,26 @@ const FIELDS = [
   "ratings_average",
   "ratings_count",
   "id_goodreads",
+  // One edition per work, picked by Open Library to match the `language` filter and `lang`.
+  "editions",
+  "editions.key",
+  "editions.title",
+  "editions.subtitle",
+  "editions.language",
+  "editions.isbn",
+  "editions.cover_i",
+  "editions.publisher",
 ].join(",");
+
+export interface EditionDoc {
+  key?: string;
+  title?: string;
+  subtitle?: string;
+  language?: string[];
+  isbn?: string[];
+  cover_i?: number;
+  publisher?: string[];
+}
 
 export interface SearchDoc {
   key: string;
@@ -36,6 +55,7 @@ export interface SearchDoc {
   ratings_average?: number;
   ratings_count?: number;
   id_goodreads?: string[];
+  editions?: { docs?: EditionDoc[] };
 }
 
 interface Work {
@@ -51,10 +71,15 @@ export function coverUrl(coverId: number | undefined, size: "M" | "L" = "L") {
   return coverId && coverId > 0 ? `${endpoints.openLibraryCovers}/b/id/${coverId}-${size}.jpg` : undefined;
 }
 
-/** Open Library lists every edition's ISBN; the first valid ISBN-13 stands in for the work. */
-function isbnOf(doc: SearchDoc) {
-  const isbns = doc.isbn ?? [];
-  return toIsbn13(isbns.find((i) => i.length === 13) ?? isbns[0]);
+function firstIsbn(isbns: string[] | undefined) {
+  return toIsbn13(isbns?.find((i) => i.length === 13) ?? isbns?.[0]);
+}
+
+/** The edition Open Library matched, when it is in the wanted language. */
+export function editionIn(doc: SearchDoc, lang: EditionLanguage | undefined) {
+  const edition = doc.editions?.docs?.[0];
+  if (!edition || !lang) return undefined;
+  return edition.language?.some((l) => languageCode(l) === lang) ? edition : undefined;
 }
 
 // Open Library ratings come from a smaller community; below this they say little.
@@ -66,22 +91,29 @@ function ratingOf(doc: SearchDoc) {
     : undefined;
 }
 
-export function docToCandidate(doc: SearchDoc): BookCandidate | null {
+/**
+ * Work-level facts come from the work. ISBN, publisher and cover come only from the edition
+ * in the wanted language, since the work's own lists mix every translation. A translated
+ * work takes the edition's title ("One Hundred Years of Solitude", not "Cien años de soledad").
+ */
+export function docToCandidate(doc: SearchDoc, lang?: EditionLanguage, isbn?: string): BookCandidate | null {
   if (!doc.title) return null;
+  const edition = editionIn(doc, lang);
+  const renamed = edition?.title && normalizeTitle(edition.title) !== normalizeTitle(doc.title);
   return {
     key: `ol:${doc.key}`,
-    title: doc.title,
-    subtitle: doc.subtitle,
+    title: renamed ? edition!.title! : doc.title,
+    subtitle: renamed ? edition!.subtitle : doc.subtitle,
     authors: doc.author_name ?? [],
     year: doc.first_publish_year,
     pageCount: doc.number_of_pages_median,
-    publisher: doc.publisher?.[0],
-    isbn: isbnOf(doc),
-    language: languageCode(doc.language?.[0]),
-    coverUrl: coverUrl(doc.cover_i, "M"),
+    publisher: edition?.publisher?.[0],
+    isbn: isbn ?? firstIsbn(edition?.isbn),
+    language: edition ? lang : undefined,
+    coverUrl: coverUrl(edition?.cover_i ?? doc.cover_i, "M"),
     editionCount: doc.edition_count,
     rating: ratingOf(doc),
-    refs: { openLibraryWork: doc.key, goodreadsIds: doc.id_goodreads?.slice(0, 3) },
+    refs: { openLibraryWork: doc.key, goodreadsIds: doc.id_goodreads?.slice(0, 3), openLibraryCover: edition?.cover_i },
     sources: ["openlibrary"],
   };
 }
@@ -94,9 +126,17 @@ async function search(params: Record<string, string>) {
   return data.docs ?? [];
 }
 
-export async function searchOpenLibrary(query: string, isbn?: string): Promise<BookCandidate[]> {
-  const docs = await search(isbn ? { isbn, limit: "5" } : { q: query, limit: "12" });
-  return docs.map(docToCandidate).filter((c): c is BookCandidate => c !== null);
+/**
+ * Title searches only return works with an edition in `lang`, and each work comes back
+ * with that edition. An ISBN search returns the edition with that ISBN.
+ */
+export async function searchOpenLibrary(query: string, opts: { isbn?: string; lang: EditionLanguage }): Promise<BookCandidate[]> {
+  const docs = await search(
+    opts.isbn
+      ? { isbn: opts.isbn, limit: "5", lang: opts.lang }
+      : { q: query, limit: "12", language: MARC_LANGUAGE[opts.lang], lang: opts.lang },
+  );
+  return docs.map((d) => docToCandidate(d, opts.lang, opts.isbn)).filter((c): c is BookCandidate => c !== null);
 }
 
 function descriptionOf(work: Work) {
@@ -117,9 +157,6 @@ export async function openLibraryWork(workKey: string, doc?: SearchDoc): Promise
     authors: doc?.author_name,
     pageCount: doc?.number_of_pages_median,
     publishedYear: doc?.first_publish_year,
-    publisher: doc?.publisher?.[0],
-    isbn: doc ? isbnOf(doc) : undefined,
-    language: languageCode(doc?.language?.[0]),
     description: descriptionOf(work),
     categories: [...(work.subjects ?? []), ...(doc?.subject ?? [])],
     rating: doc ? ratingOf(doc) : undefined,

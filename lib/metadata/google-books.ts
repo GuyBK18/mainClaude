@@ -1,6 +1,6 @@
-import type { BookCandidate, PartialDetails } from "./types";
+import type { BookCandidate, EditionLanguage, PartialDetails } from "./types";
 import { endpoints, getJSON, googleBooksKey } from "./http";
-import { htmlToParagraphs, httpsUrl, snippetOf, toIsbn13, yearFrom } from "./text";
+import { htmlToParagraphs, httpsUrl, normalizeTitle, snippetOf, surname, toIsbn13, yearFrom } from "./text";
 
 interface VolumeInfo {
   title?: string;
@@ -79,9 +79,15 @@ function toCandidate(v: Volume): BookCandidate | null {
   };
 }
 
-export async function searchGoogleBooks(query: string, isbn?: string): Promise<BookCandidate[]> {
-  const q = isbn ? `isbn:${isbn}` : query;
-  const data = await getJSON<VolumesResponse>(url("/volumes", { q, maxResults: "12", printType: "books" }));
+/**
+ * Title searches are limited to editions in `lang`. An ISBN names one edition, so it is
+ * looked up as is.
+ */
+export async function searchGoogleBooks(query: string, opts: { isbn?: string; lang: EditionLanguage }): Promise<BookCandidate[]> {
+  const params: Record<string, string> = opts.isbn
+    ? { q: `isbn:${opts.isbn}`, maxResults: "12", printType: "books" }
+    : { q: query, maxResults: "12", printType: "books", langRestrict: opts.lang };
+  const data = await getJSON<VolumesResponse>(url("/volumes", params));
   return (data.items ?? []).map(toCandidate).filter((c): c is BookCandidate => c !== null);
 }
 
@@ -116,4 +122,20 @@ export async function googleByIsbn(isbn: string): Promise<PartialDetails | null>
   const data = await getJSON<VolumesResponse>(url("/volumes", { q: `isbn:${isbn}`, maxResults: "1" }));
   const first = data.items?.[0];
   return first ? googleVolume(first.id).catch(() => toDetails(first)) : null;
+}
+
+/**
+ * Finds the edition in `lang`: by ISBN when the ISBN's edition is in that language,
+ * otherwise by title and author among editions in that language.
+ */
+export async function googleFind(q: { isbn?: string; title: string; author?: string; lang: EditionLanguage }): Promise<PartialDetails | null> {
+  if (q.isbn) {
+    const byIsbn = await googleByIsbn(q.isbn);
+    if (byIsbn && (!byIsbn.language || byIsbn.language === q.lang)) return byIsbn;
+  }
+  const terms = [`intitle:${q.title}`, q.author ? `inauthor:${surname(q.author)}` : ""].filter(Boolean).join(" ");
+  const data = await getJSON<VolumesResponse>(url("/volumes", { q: terms, maxResults: "5", printType: "books", langRestrict: q.lang }));
+  const want = normalizeTitle(q.title);
+  const hit = data.items?.find((v) => v.volumeInfo.title && normalizeTitle(v.volumeInfo.title) === want);
+  return hit ? googleVolume(hit.id).catch(() => toDetails(hit)) : null;
 }

@@ -10,6 +10,12 @@ export const SOURCE_LABEL: Record<SourceId, string> = {
   wikidata: "Wikidata",
 };
 
+/**
+ * The edition language the reader wants. English unless the search was typed in Hebrew
+ * (or is an Israeli ISBN). Search results, description and covers all follow it.
+ */
+export type EditionLanguage = "en" | "he";
+
 export interface PublicRating {
   value: number;
   count: number;
@@ -24,6 +30,8 @@ export interface CandidateRefs {
   /** Goodreads book ids Open Library links to its works. */
   goodreadsIds?: string[];
   goodreadsUrl?: string;
+  /** Cover of the Open Library edition that is in the wanted language. */
+  openLibraryCover?: number;
 }
 
 /** One search result. Several catalogs' records for the same book merge into one candidate. */
@@ -45,6 +53,8 @@ export interface BookCandidate {
   rating?: PublicRating;
   refs: CandidateRefs;
   sources: SourceId[];
+  /** The edition language the search asked for; the details step follows it. */
+  lang?: EditionLanguage;
 }
 
 /** What one catalog knows about a book. Every field is optional; the merge picks per field. */
@@ -63,6 +73,11 @@ export interface PartialDetails {
   rating?: PublicRating;
   coverUrl?: string;
   url?: string;
+  /**
+   * Set when the record is for an edition in another language. Only fields that hold for
+   * every edition (rating, series, genres, first publication) are kept.
+   */
+  workOnly?: boolean;
 }
 
 export type DetailField =
@@ -76,6 +91,12 @@ export type DetailField =
   | "series"
   | "rating"
   | "coverUrl";
+
+/** A cover image found in one of the catalogs. */
+export interface CoverOption {
+  url: string;
+  source: SourceId;
+}
 
 /** The merged record the add-book form is filled from. */
 export interface BookDetails {
@@ -92,7 +113,11 @@ export interface BookDetails {
   genres: Genre[];
   series?: SeriesInfo;
   rating?: PublicRating;
+  /** The first of `covers`, or nothing when no catalog had an image. */
   coverUrl?: string;
+  /** Up to two covers of editions in the wanted language, best first. */
+  covers: CoverOption[];
+  lang: EditionLanguage;
   sourceUrl?: string;
   /** Which catalog each filled field came from. */
   provenance: Partial<Record<DetailField, SourceId>>;
@@ -103,7 +128,8 @@ export interface BookDetails {
 export interface SearchResponse {
   candidates: BookCandidate[];
   notes: string[];
+  lang: EditionLanguage;
 }
 
 /** A URL import either resolves to one book or, when the link only names a title, to a list to pick from. */
-export type LookupResponse = { details: BookDetails } | { candidates: BookCandidate[]; notes: string[] };
+export type LookupResponse = { details: BookDetails } | SearchResponse;

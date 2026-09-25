@@ -1,0 +1,30 @@
+{
+ "kind": "books#volume",
+ "id": "PLVOL1",
+ "volumeInfo": {
+  "title": "Piranesi",
+  "authors": [
+   "Susanna Clarke"
+  ],
+  "publisher": "Wydawnictwo Mag",
+  "publishedDate": "2020-09-15",
+  "description": "<p>Piranesi mieszka w Domu. Być może zawsze tam mieszkał. W swoich notatnikach dzień po dniu zapisuje jego cuda: labirynt sal, tysiące posągów, przypływy, które nagle wdzierają się po schodach.</p>",
+  "industryIdentifiers": [
+   {
+    "type": "ISBN_13",
+    "identifier": "9788366409000"
+   }
+  ],
+  "pageCount": 250,
+  "printType": "BOOK",
+  "categories": [
+   "Fiction / Fantasy / Contemporary",
+   "Fiction / Literary"
+  ],
+  "imageLinks": {
+   "thumbnail": "http://books.google.com/books/content?id=PLVOL1&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+  },
+  "language": "pl",
+  "canonicalVolumeLink": "https://books.google.com/books/about/Piranesi.html?id=PLVOL1"
+ }
+}

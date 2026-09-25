@@ -1,7 +1,9 @@
 import type {
   BookCandidate,
   BookDetails,
+  CoverOption,
   DetailField,
+  EditionLanguage,
   LookupResponse,
   PartialDetails,
   PublicRating,
@@ -9,48 +11,83 @@ import type {
 } from "./types";
 import { SOURCE_LABEL } from "./types";
 import { describeFailure, goodreadsEnabled } from "./http";
-import { googleByIsbn, googleVolume } from "./google-books";
-import { openLibraryByIsbn, openLibraryWork } from "./open-library";
-import { goodreadsLookup } from "./goodreads";
+import { googleFind, googleVolume } from "./google-books";
+import { coverUrl as openLibraryCover, editionIn, openLibraryByIsbn, openLibraryWork } from "./open-library";
+import { goodreadsLookup, workOnly } from "./goodreads";
 import { wikidataSeries } from "./wikidata";
 import { mapGenres } from "./genres";
 import { searchCatalogs } from "./search";
-import { cleanIsbn, languageName, toIsbn13 } from "./text";
+import { cleanIsbn, languageName, textLanguage, toIsbn13 } from "./text";
 
 type Offer<T> = [SourceId | undefined, T | undefined];
 
 // Google and Open Library ratings rest on few voters; below this they mislead more than they help.
 const MIN_FALLBACK_RATINGS = 5;
+const MAX_COVERS = 2;
 
 /** The candidate's own values came from whichever catalog found it first. */
 function candidateSource(c: BookCandidate, prefer: SourceId): SourceId | undefined {
   return c.sources.includes(prefer) ? prefer : c.sources[0];
 }
 
+/** A record for an edition in another language keeps only what every edition shares. */
+function inLanguage(p: PartialDetails | undefined, lang: EditionLanguage) {
+  if (!p || p.workOnly || !p.language || p.language === lang) return p;
+  return workOnly(p);
+}
+
+const sameEdition = (p: PartialDetails | undefined) => (p && !p.workOnly ? p.url : undefined);
+
+/** Descriptions are checked by their text too: catalogs mislabel editions more often than you would think. */
+function descriptionIn(p: PartialDetails | undefined, lang: EditionLanguage | "en") {
+  const text = p?.description;
+  if (!text) return undefined;
+  const reads = textLanguage(text);
+  return reads === lang || (reads === undefined && (!p.language || p.language === lang)) ? text : undefined;
+}
+
 export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
+  const lang: EditionLanguage = c.lang ?? "en";
   const notes: string[] = [];
   const author = c.authors[0];
+  // A result that is itself another language's edition still names the book, but its ISBN,
+  // publisher and page count belong to that edition.
+  const sameLanguage = !c.language || c.language === lang;
+  const isbnHint = sameLanguage ? c.isbn : undefined;
 
-  const googleTask = c.refs.googleId ? googleVolume(c.refs.googleId) : c.isbn ? googleByIsbn(c.isbn) : Promise.resolve(null);
+  const googleTask = (async () => {
+    const volume = c.refs.googleId ? await googleVolume(c.refs.googleId) : null;
+    if (volume && (!volume.language || volume.language === lang)) return volume;
+    return (await googleFind({ isbn: isbnHint, title: c.title, author, lang })) ?? volume;
+  })();
   const olTask = c.refs.openLibraryWork
-    ? openLibraryWork(c.refs.openLibraryWork)
-    : c.isbn
-      ? openLibraryByIsbn(c.isbn).then((r) => r?.details ?? null)
+    ? openLibraryWork(c.refs.openLibraryWork).then((details) => ({ details, cover: c.refs.openLibraryCover }))
+    : isbnHint
+      ? openLibraryByIsbn(isbnHint).then((r) => r && { details: r.details, cover: editionIn(r.doc, lang)?.cover_i })
       : Promise.resolve(null);
   const grTask = goodreadsEnabled()
-    ? goodreadsLookup({ url: c.refs.goodreadsUrl, ids: c.refs.goodreadsIds, isbn: c.isbn, title: c.title, author })
+    ? goodreadsLookup({ url: c.refs.goodreadsUrl, ids: c.refs.goodreadsIds, isbn: isbnHint, title: c.title, author, lang })
     : Promise.resolve(null);
 
   const [g, o, r] = await Promise.allSettled([googleTask, olTask, grTask]);
-  const settle = (result: PromiseSettledResult<PartialDetails | null>, source: SourceId) => {
+  const settle = <T,>(result: PromiseSettledResult<T | null>, source: SourceId) => {
     if (result.status === "fulfilled") return result.value ?? undefined;
     notes.push(`${SOURCE_LABEL[source]} ${describeFailure(result.reason)}.`);
     return undefined;
   };
-  const google = settle(g, "googlebooks");
-  const ol = settle(o, "openlibrary");
-  const gr = settle(r, "goodreads");
+  const googleAny = settle(g, "googlebooks");
+  const olResult = settle(o, "openlibrary");
+  const grAny = settle(r, "goodreads");
   if (goodreadsEnabled() && r.status === "fulfilled" && !r.value) notes.push("Goodreads has no page that matches this book.");
+
+  const google = inLanguage(googleAny, lang);
+  const gr = inLanguage(grAny, lang);
+  const ol = olResult?.details;
+  const wanted = languageName(lang)!;
+  if (grAny?.workOnly && grAny.language) {
+    const other = languageName(grAny.language) ?? "another language";
+    notes.push(`Goodreads only had the ${other} edition, so its cover, pages and description were not used.`);
+  }
 
   let series = gr?.series;
   let seriesSource: SourceId | undefined = series ? "goodreads" : undefined;
@@ -64,7 +101,7 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
   }
 
   const provenance: BookDetails["provenance"] = {};
-  const pick = <T>(field: DetailField, offers: Offer<T>[]): T | undefined => {
+  const pick = <T,>(field: DetailField, offers: Offer<T>[]): T | undefined => {
     const hit = offers.find(([source, value]) => source && value !== undefined && value !== null && value !== "");
     if (hit) provenance[field] = hit[0];
     return hit?.[1];
@@ -74,55 +111,73 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
     candidateSource(c, prefer),
     c[key],
   ];
+  const fromEdition = <K extends "pageCount" | "publisher" | "isbn">(key: K, prefer: SourceId): Offer<BookCandidate[K]> =>
+    sameLanguage ? fromCandidate(key, prefer) : [undefined, undefined];
 
   const pageCount = pick("pageCount", [
     ["goodreads", gr?.pageCount],
     ["googlebooks", google?.pageCount],
+    fromEdition("pageCount", "googlebooks"),
     ["openlibrary", ol?.pageCount],
-    fromCandidate("pageCount", "googlebooks"),
   ]);
   const publishedYear = pick("publishedYear", [
     // Open Library and Goodreads both report first publication; Google reports the edition.
     ["openlibrary", c.sources.includes("openlibrary") ? c.year : ol?.publishedYear],
-    ["goodreads", gr?.publishedYear],
-    ["googlebooks", google?.publishedYear],
+    ["goodreads", grAny?.publishedYear],
+    ["googlebooks", googleAny?.publishedYear],
     fromCandidate("year", "googlebooks"),
   ]);
   const publisher = pick("publisher", [
     ["googlebooks", google?.publisher],
     ["goodreads", gr?.publisher],
-    ["openlibrary", ol?.publisher],
-    fromCandidate("publisher", "googlebooks"),
+    fromEdition("publisher", "googlebooks"),
   ]);
-  const isbn = pick("isbn", [fromCandidate("isbn", "googlebooks"), ["googlebooks", google?.isbn], ["goodreads", gr?.isbn], ["openlibrary", ol?.isbn]]);
-  const languageCode = pick("language", [
-    ["googlebooks", google?.language],
-    fromCandidate("language", "googlebooks"),
-    ["openlibrary", ol?.language],
-    ["goodreads", gr?.language],
-  ]);
-  const description = pick("description", [
-    ["googlebooks", google?.description],
-    ["goodreads", gr?.description],
-    ["openlibrary", ol?.description],
-  ]);
+  const isbn = pick("isbn", [fromEdition("isbn", "googlebooks"), ["googlebooks", google?.isbn], ["goodreads", gr?.isbn]]);
+
+  const descriptions: Offer<string>[] = [
+    ["googlebooks", descriptionIn(googleAny, lang)],
+    ["goodreads", descriptionIn(grAny, lang)],
+    ["openlibrary", descriptionIn(ol, lang)],
+  ];
+  let description = pick("description", descriptions);
+  if (!description && lang === "he") {
+    // Few Hebrew editions carry a description; an English one beats none.
+    description = pick("description", [
+      ["googlebooks", descriptionIn(googleAny, "en")],
+      ["goodreads", descriptionIn(grAny, "en")],
+      ["openlibrary", descriptionIn(ol, "en")],
+    ]);
+    if (description) notes.push("No catalog had a Hebrew description, so the description is in English.");
+  } else if (!description && [googleAny, grAny, ol].some((p) => p?.description)) {
+    notes.push(`No catalog had a description in ${wanted}, so the description is empty.`);
+  }
+
   const enough = (rating: PublicRating | undefined) => (rating && rating.count >= MIN_FALLBACK_RATINGS ? rating : undefined);
   const rating = pick("rating", [
-    ["goodreads", gr?.rating],
+    // A Goodreads rating covers every edition, so a page in another language still counts.
+    ["goodreads", grAny?.rating],
     ["openlibrary", enough(ol?.rating ?? (c.rating?.source === "openlibrary" ? c.rating : undefined))],
-    ["googlebooks", enough(google?.rating ?? (c.rating?.source === "googlebooks" ? c.rating : undefined))],
+    ["googlebooks", enough(googleAny?.rating ?? (c.rating?.source === "googlebooks" ? c.rating : undefined))],
   ]);
-  const coverUrl = pick("coverUrl", [
+
+  // Covers of editions in the wanted language, best image first. The work's own cover is
+  // usually the original edition's, so it is a last resort and only for English.
+  const coverOffers: Offer<string>[] = [
     ["goodreads", gr?.coverUrl],
-    ["openlibrary", ol?.coverUrl],
+    ["openlibrary", openLibraryCover(olResult?.cover, "L")],
     ["googlebooks", google?.coverUrl],
-    fromCandidate("coverUrl", "openlibrary"),
-  ]);
+  ];
+  if (lang === "en") coverOffers.push(["openlibrary", ol?.coverUrl]);
+  const covers: CoverOption[] = [];
+  for (const [source, url] of coverOffers) {
+    if (source && url && !covers.some((cv) => cv.url === url) && covers.length < MAX_COVERS) covers.push({ url, source });
+  }
+  if (covers[0]) provenance.coverUrl = covers[0].source;
   if (series && seriesSource) provenance.series = seriesSource;
 
   const genreSources = [
-    { source: "goodreads" as const, labels: gr?.categories ?? [], weight: 5 },
-    { source: "googlebooks" as const, labels: google?.categories ?? [], weight: 2 },
+    { source: "goodreads" as const, labels: grAny?.categories ?? [], weight: 5 },
+    { source: "googlebooks" as const, labels: googleAny?.categories ?? [], weight: 2 },
     { source: "openlibrary" as const, labels: ol?.categories ?? [], weight: 1 },
   ];
   const genres = mapGenres(genreSources);
@@ -136,18 +191,21 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
   return {
     title: c.title,
     subtitle: c.subtitle,
-    author: c.authors.slice(0, 2).join(" & ") || gr?.authors?.[0] || google?.authors?.[0] || "",
+    author: c.authors.slice(0, 2).join(" & ") || grAny?.authors?.[0] || googleAny?.authors?.[0] || "",
     pageCount,
     publishedYear,
     publisher,
     isbn,
-    language: languageName(languageCode),
+    language: wanted,
     description,
     genres,
     series,
     rating,
-    coverUrl,
-    sourceUrl: gr?.url ?? google?.url ?? ol?.url,
+    coverUrl: covers[0]?.url,
+    covers,
+    lang,
+    // Link to the edition in the wanted language when there is one.
+    sourceUrl: sameEdition(gr) ?? sameEdition(google) ?? grAny?.url ?? ol?.url ?? googleAny?.url,
     provenance,
     notes,
   };
@@ -172,9 +230,9 @@ function titleFromSlug(url: URL) {
 }
 
 async function detailsOrChoices(query: string): Promise<LookupResponse> {
-  const { candidates, notes } = await searchCatalogs(query);
-  if (candidates.length === 1) return { details: await getBookDetails(candidates[0]) };
-  return { candidates, notes };
+  const found = await searchCatalogs(query);
+  if (found.candidates.length === 1) return { details: await getBookDetails(found.candidates[0]) };
+  return found;
 }
 
 /**
@@ -188,14 +246,17 @@ export async function lookupUrl(raw: string): Promise<LookupResponse> {
     url.search = "";
     const page = await goodreadsLookup({ url: url.toString(), title: "" });
     if (page?.title) {
+      // The pasted page decides the language: Hebrew stays Hebrew, anything else is read in English.
+      const lang: EditionLanguage = page.language === "he" ? "he" : "en";
       return {
         details: await getBookDetails({
           key: `gr:${url.pathname}`,
           title: page.title,
           authors: page.authors ?? [],
-          isbn: page.isbn,
+          isbn: page.language === lang ? page.isbn : undefined,
           refs: { goodreadsUrl: url.toString() },
           sources: ["goodreads"],
+          lang,
         }),
       };
     }
@@ -206,5 +267,5 @@ export async function lookupUrl(raw: string): Promise<LookupResponse> {
 
   const title = titleFromSlug(url);
   if (!title) throw new Error("That link does not name a book.");
-  return { candidates: (await searchCatalogs(title)).candidates, notes: [] };
+  return { ...(await searchCatalogs(title)), notes: [] };
 }

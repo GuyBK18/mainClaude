@@ -94,4 +94,41 @@ describe("Goodreads lookup", () => {
     fakeFetch([[/goodreads/, { status: 403 }]]);
     await expect(goodreadsLookup({ isbn: "9780061054884", title: "The Dispossessed" })).rejects.toThrow(/403/);
   });
+
+  it("skips an edition in another language and finds the English one by search", async () => {
+    const calls = fakeFetch([
+      [/\/book\/isbn\//, html("goodreads-book-polish.html", `${GR}/book/show/99999.Zloty_syn`)],
+      [/\/search\?/, html("goodreads-search-piranesi.html")],
+      [/\/book\/show\/50202953/, html("goodreads-book-full.html", `${GR}/book/show/50202953-piranesi`)],
+    ]);
+    const d = await goodreadsLookup({ isbn: "9788365661000", title: "Piranesi", author: "Susanna Clarke", lang: "en" });
+    expect(d?.language).toBe("en");
+    expect(d?.workOnly).toBeUndefined();
+    expect(d?.coverUrl).toMatch(/13651\.jpg$/);
+    expect(calls.some((u) => u.includes("/search?"))).toBe(true);
+  });
+
+  it("keeps only rating, series and genres when Goodreads has just another language's edition", async () => {
+    const calls = fakeFetch([
+      [/\/book\/isbn\//, html("goodreads-book-polish.html", `${GR}/book/show/99999.Zloty_syn`)],
+      [/\/search\?/, { body: "<html><body>No results</body></html>", type: "text/html" }],
+    ]);
+    const d = await goodreadsLookup({ isbn: "9788365661000", ids: ["99999"], title: "Piranesi", author: "Susanna Clarke", lang: "en" });
+    expect(d).toMatchObject({ workOnly: true, language: "pl", rating: { value: 4.51, count: 614661, source: "goodreads" } });
+    expect(d?.series?.name).toBe("Hainish Cycle");
+    expect(d?.categories?.[0]).toBe("Science Fiction");
+    expect(d?.coverUrl).toBeUndefined();
+    expect(d?.description).toBeUndefined();
+    expect(d?.pageCount).toBeUndefined();
+    expect(d?.isbn).toBeUndefined();
+    // The Open Library ids are not worth a request once a page for the book was found.
+    expect(calls.some((u) => u.includes("/book/show/99999"))).toBe(false);
+  });
+
+  it("drops Goodreads' placeholder image for books without a cover", async () => {
+    fakeFetch([[/\/book\/isbn\//, html("goodreads-book-nophoto.html", `${GR}/book/show/13651.The_Dispossessed`)]]);
+    const d = await goodreadsLookup({ isbn: "9780061054884", title: "The Dispossessed", lang: "en" });
+    expect(d?.title).toBe("The Dispossessed");
+    expect(d?.coverUrl).toBeUndefined();
+  });
 });
