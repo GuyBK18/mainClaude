@@ -9,6 +9,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { BulkAddDialog } from "@/components/library/bulk-add-dialog";
 import { QuickAddDialog } from "@/components/library/quick-add-dialog";
+import { BackupDialog } from "@/components/shell/backup-dialog";
+import { BackupNotices } from "@/components/shell/backup-notices";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -21,6 +23,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <CommandPalette />
               <QuickAddDialog />
               <BulkAddDialog />
+              <BackupDialog />
+              <BackupNotices />
               <Toaster
                 position="bottom-right"
                 toastOptions={{

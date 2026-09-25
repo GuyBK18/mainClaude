@@ -1,6 +1,6 @@
 # LuminaRead
 
-A personal library and reading journal for one reader. No accounts and no sync. Your library lives in the browser's LocalStorage behind a repository interface, so the data source can be swapped later. The only server code is the book importer, which runs inside `npm run dev` on your own machine.
+A personal library and reading journal for one reader. No accounts. Your library lives in the browser's LocalStorage behind a repository interface, so the data source can be swapped later, and every change is also saved to a file on your computer (see Backup). The server code is the book importer and the backup, both running inside `npm run dev` on your own machine. The server listens on this computer only, not on the local network.
 
 ## Run it
 
@@ -44,6 +44,21 @@ lib/library-context.tsx             React provider the UI reads from
 To move to an API or a database, write a class that implements `LibraryRepository` and return it from `getRepository()`. Nothing in the UI imports the LocalStorage class directly.
 
 `Book` also stores `description` (the publisher's text), `ratingSource` and `ratingsCount` for imported books. `goodreadsRating` keeps its name from the spec and holds the public average; `ratingSource` says which catalog it came from.
+
+Every save stamps the library with `updatedAt`. The file backup uses it to tell which copy is newer.
+
+## Backup
+
+Every change is saved to `library.json` in a folder on your computer, about half a second after you make it. The folder is iCloud Drive/LuminaRead when the Mac has iCloud Drive, otherwise ~/Documents/LuminaRead. Set `LUMINAREAD_DATA_DIR` in `.env.local` to use another folder. The local server writes the file; the browser sends it the whole library.
+
+- On start, the browser and the file are compared by `updatedAt` and the newer one wins. A browser with nothing in it (cleared data, another browser) gets the library back from the file. Changes that did not reach the file, for example while the server was stopped, go to it on the next start.
+- A library saved before backups existed, meeting a backup made elsewhere, is merged into it, so neither loses a book.
+- The folder keeps a copy per day in `daily/`, for the last 30 days that have one. **Backup and restore** in the command palette (Cmd+K) shows where the backup is, when it last saved, and the copies. Restoring one keeps the library it replaces as a `before-restore` copy.
+- Nothing is written until the file has been read. If it cannot be read, the app says so and keeps working from the browser only.
+- A toast appears the first time the library is backed up, when a save fails, and when saving works again.
+- Two tabs stay in step: when one saves, the other reloads its copy before it writes.
+
+The code is in `lib/data/file-backup.ts` (browser), `lib/backup/store.ts` and `app/api/library/` (server).
 
 Reading progress is stored two ways. `Book.currentPage` is the bookmark. `ReadingSession` records pages per book per day and drives the heatmap, streaks and monthly totals. Moving the slider or typing a page logs the difference as today's session.
 

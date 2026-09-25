@@ -10,6 +10,9 @@ interface UIContextValue {
   /** The dialog that adds a pasted list of links in one go. */
   bulkAddOpen: boolean;
   setBulkAddOpen: (open: boolean) => void;
+  /** Backup status and daily copies. Opened from the command palette. */
+  backupOpen: boolean;
+  setBackupOpen: (open: boolean) => void;
 }
 
 const UIContext = createContext<UIContextValue | null>(null);
@@ -18,6 +21,7 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   const [commandOpen, setCommandOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpenState] = useState(false);
   const [bulkAddOpen, setBulkAddOpenState] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
 
   const setQuickAddOpen = useCallback((open: boolean) => {
     if (open) {
@@ -47,8 +51,8 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ commandOpen, setCommandOpen, quickAddOpen, setQuickAddOpen, bulkAddOpen, setBulkAddOpen }),
-    [commandOpen, quickAddOpen, setQuickAddOpen, bulkAddOpen, setBulkAddOpen],
+    () => ({ commandOpen, setCommandOpen, quickAddOpen, setQuickAddOpen, bulkAddOpen, setBulkAddOpen, backupOpen, setBackupOpen }),
+    [commandOpen, quickAddOpen, setQuickAddOpen, bulkAddOpen, setBulkAddOpen, backupOpen],
   );
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
 }

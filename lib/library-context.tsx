@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Book, BookPatch, NewBook, NewHighlight, ReadingGoal } from "@/types/reading";
 import { getRepository, type LibrarySnapshot } from "@/lib/data";
+import { startFileBackup, type BackupStatus, type FileBackup } from "@/lib/data/file-backup";
 import { today } from "@/lib/dates";
 
 interface LibraryContextValue {
@@ -20,19 +21,43 @@ interface LibraryContextValue {
   addHighlight: (input: NewHighlight) => Promise<void>;
   deleteHighlight: (id: string) => Promise<void>;
   setGoal: (goal: ReadingGoal) => Promise<void>;
+  /** The file backup on this computer. */
+  backup: BackupStatus;
+  /** Replaces the library with one of the backup's daily copies. */
+  restoreCopy: (copyId: string) => Promise<void>;
 }
 
 const LibraryContext = createContext<LibraryContextValue | null>(null);
 
 export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<LibrarySnapshot | null>(null);
+  const [backup, setBackup] = useState<BackupStatus>({ state: "starting" });
+  const fileBackup = useRef<FileBackup | null>(null);
   const repo = getRepository();
 
   const refresh = useCallback(async () => setData(await repo.load()), [repo]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    // The library shows once the browser and the backup agree, so a newer backup never flashes the old list first.
+    const started = startFileBackup(repo, setBackup);
+    fileBackup.current = started;
+    void started.ready.then(refresh);
+    const unsubscribe = repo.subscribe((_, cause) => {
+      if (cause === "external") void refresh();
+    });
+    return () => {
+      started.stop();
+      unsubscribe();
+    };
+  }, [repo, refresh]);
+
+  const restoreCopy = useCallback(
+    async (copyId: string) => {
+      await fileBackup.current?.restore(copyId);
+      await refresh();
+    },
+    [refresh],
+  );
 
   const addBook = useCallback(
     async (input: NewBook) => {
@@ -126,8 +151,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal }),
-    [data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal],
+    () => ({ data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, backup, restoreCopy }),
+    [data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, backup, restoreCopy],
   );
 
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;

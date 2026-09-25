@@ -1,7 +1,7 @@
 import type { Book, BookPatch, NewBook, NewHighlight, ReadingGoal } from "@/types/reading";
 import { today } from "@/lib/dates";
 import { slugify, uid } from "@/lib/utils";
-import type { LibraryRepository, LibrarySnapshot } from "./repository";
+import type { ChangeListener, LibraryRepository, LibrarySnapshot } from "./repository";
 import { CURRENT_VERSION, emptyLibrary, migrate } from "./migrations";
 
 const STORAGE_KEY = "luminaread:library:v1";
@@ -12,6 +12,8 @@ const STORAGE_KEY = "luminaread:library:v1";
  */
 export class LocalStorageRepository implements LibraryRepository {
   private memory: LibrarySnapshot | null = null;
+  private listeners = new Set<ChangeListener>();
+  private watchingTabs = false;
 
   private read(): LibrarySnapshot {
     if (this.memory) return this.memory;
@@ -23,7 +25,7 @@ export class LocalStorageRepository implements LibraryRepository {
         if (stored.version === CURRENT_VERSION) {
           this.memory = stored;
         } else {
-          this.write(migrate(stored));
+          this.write(migrate(stored), false);
         }
         return this.memory!;
       }
@@ -35,17 +37,48 @@ export class LocalStorageRepository implements LibraryRepository {
         // Nowhere to keep it.
       }
     }
-    this.write(emptyLibrary());
+    this.write(emptyLibrary(), false);
     return this.memory!;
   }
 
-  private write(next: LibrarySnapshot) {
-    this.memory = next;
+  /**
+   * Saves the library. A change the reader made gets a new `updatedAt` and goes to listeners,
+   * such as the file backup. Loading, migrating and adopting a backup keep the stamp they had.
+   */
+  private write(next: LibrarySnapshot, change = true) {
+    const saved = change ? { ...next, updatedAt: new Date().toISOString() } : next;
+    this.memory = saved;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     } catch {
-      // Storage full or blocked. The in-memory copy keeps the session working.
+      // Storage full or blocked. The in-memory copy keeps the session working, and listeners still get it.
     }
+    if (change) for (const listener of this.listeners) listener(saved, "change");
+  }
+
+  subscribe(listener: ChangeListener) {
+    this.listeners.add(listener);
+    this.watchOtherTabs();
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  /** When another tab saves, the copy cached here is stale: drop it, so this tab never writes over theirs. */
+  private watchOtherTabs() {
+    if (this.watchingTabs || typeof window === "undefined") return;
+    this.watchingTabs = true;
+    window.addEventListener("storage", (event) => {
+      if (event.key !== STORAGE_KEY) return;
+      this.memory = null;
+      const current = this.read();
+      for (const listener of this.listeners) listener(current, "external");
+    });
+  }
+
+  async replace(snapshot: LibrarySnapshot, options: { change?: boolean } = {}) {
+    this.write(snapshot.version === CURRENT_VERSION ? snapshot : migrate(snapshot), options.change ?? false);
+    return structuredClone(this.memory!);
   }
 
   async load() {
