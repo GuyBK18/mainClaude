@@ -60,11 +60,26 @@ describe("Goodreads search page", () => {
 });
 
 describe("Goodreads lookup", () => {
-  it("follows the ISBN redirect to the book page", async () => {
-    const calls = fakeFetch([[/\/book\/isbn\/9780061054884/, html("goodreads-book-full.html", `${GR}/book/show/13651.The_Dispossessed`)]]);
+  it("follows the ISBN redirect when the search finds nothing", async () => {
+    const calls = fakeFetch([
+      [/\/search\?/, { body: "<html><body>No results</body></html>", type: "text/html" }],
+      [/\/book\/isbn\/9780061054884/, html("goodreads-book-full.html", `${GR}/book/show/13651.The_Dispossessed`)],
+    ]);
     const d = await goodreadsLookup({ isbn: "9780061054884", title: "The Dispossessed", author: "Ursula K. Le Guin" });
     expect(d?.series?.name).toBe("Hainish Cycle");
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("prefers the edition Goodreads shows for the book over the ISBN's printing", async () => {
+    const calls = fakeFetch([
+      [/\/search\?/, html("goodreads-search-piranesi.html")],
+      [/\/book\/show\/50202953/, html("goodreads-book-full.html", `${GR}/book/show/50202953-piranesi`)],
+      [/\/book\/isbn\//, html("goodreads-book-htmlonly.html", `${GR}/book/show/18423.Other_printing`)],
+    ]);
+    const d = await goodreadsLookup({ isbn: "9781635575637", title: "Piranesi", author: "Susanna Clarke", lang: "en" });
+    expect(d?.url).toBe(`${GR}/book/show/50202953-piranesi`);
+    expect(d?.pageCount).toBe(387);
+    expect(calls.some((u) => u.includes("/book/isbn/"))).toBe(false);
   });
 
   it("searches by title when the ISBN is unknown, and skips rows by other authors", async () => {
@@ -95,17 +110,17 @@ describe("Goodreads lookup", () => {
     await expect(goodreadsLookup({ isbn: "9780061054884", title: "The Dispossessed" })).rejects.toThrow(/403/);
   });
 
-  it("skips an edition in another language and finds the English one by search", async () => {
+  it("skips an edition in another language and goes on to the English one", async () => {
     const calls = fakeFetch([
-      [/\/book\/isbn\//, html("goodreads-book-polish.html", `${GR}/book/show/99999.Zloty_syn`)],
       [/\/search\?/, html("goodreads-search-piranesi.html")],
-      [/\/book\/show\/50202953/, html("goodreads-book-full.html", `${GR}/book/show/50202953-piranesi`)],
+      [/\/book\/show\/50202953/, html("goodreads-book-polish.html", `${GR}/book/show/99999.Zloty_syn`)],
+      [/\/book\/isbn\//, html("goodreads-book-full.html", `${GR}/book/show/13651.The_Dispossessed`)],
     ]);
-    const d = await goodreadsLookup({ isbn: "9788365661000", title: "Piranesi", author: "Susanna Clarke", lang: "en" });
+    const d = await goodreadsLookup({ isbn: "9780061054884", title: "Piranesi", author: "Susanna Clarke", lang: "en" });
     expect(d?.language).toBe("en");
     expect(d?.workOnly).toBeUndefined();
     expect(d?.coverUrl).toMatch(/13651\.jpg$/);
-    expect(calls.some((u) => u.includes("/search?"))).toBe(true);
+    expect(calls.some((u) => u.includes("/book/isbn/"))).toBe(true);
   });
 
   it("keeps only rating, series and genres when Goodreads has just another language's edition", async () => {

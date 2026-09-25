@@ -226,8 +226,8 @@ function realCover(url: string | undefined) {
 }
 
 /**
- * Finds the book's Goodreads page in the wanted language: a given URL first, then the
- * ISBN redirect, then a title and author search, then the ids Open Library links to.
+ * Finds the book's Goodreads page in the wanted language: a given URL first, then a title
+ * and author search, then the ISBN redirect, then the ids Open Library links to.
  * Each Goodreads page is one edition, so a page in another language only lends its
  * rating, series, genres and first publication year. Throws only when Goodreads itself failed.
  */
@@ -268,11 +268,9 @@ export async function goodreadsLookup(q: {
     return null;
   }
 
-  if (q.isbn) {
-    const found = inLanguage(await attempt(`${base}/book/isbn/${q.isbn}`));
-    if (found) return found;
-  }
-
+  // Search first: it leads to the edition Goodreads itself shows for the book, the one a
+  // reader sees there. The ISBN leads to one specific printing, with its own page count.
+  let row: PartialDetails | null = null;
   try {
     const query = [q.title, q.author].filter(Boolean).join(" ");
     const { text } = await getText(`${base}/search?q=${encodeURIComponent(query)}&search_type=books`, { browser: true, timeoutMs: 9000 });
@@ -282,12 +280,15 @@ export async function goodreadsLookup(q: {
       const found = inLanguage(page);
       if (found) return found;
       // The search row alone still carries the rating and cover.
-      if (!page && !otherLanguage) {
-        return { title: hit.title, rating: hit.rating, coverUrl: realCover(hit.coverUrl), url: hit.url, publishedYear: hit.year };
-      }
+      if (!page) row = { title: hit.title, rating: hit.rating, coverUrl: realCover(hit.coverUrl), url: hit.url, publishedYear: hit.year };
     }
   } catch (error) {
     lastError = error;
+  }
+
+  if (q.isbn) {
+    const found = inLanguage(await attempt(`${base}/book/isbn/${q.isbn}`));
+    if (found) return found;
   }
 
   if (!otherLanguage) {
@@ -298,6 +299,7 @@ export async function goodreadsLookup(q: {
   }
 
   if (otherLanguage) return workOnly(otherLanguage);
+  if (row) return row;
   if (lastError) throw lastError;
   return null;
 }
