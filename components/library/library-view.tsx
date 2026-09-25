@@ -209,6 +209,19 @@ export function LibraryView() {
               <LoadingBlock key={i} className="aspect-[2/3]" />
             ))}
           </div>
+        ) : books.length === 0 ? (
+          <div className="py-24 text-center">
+            <p className="font-serif text-2xl">Your library is empty.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Paste a list of Goodreads links to add many books at once, or add them one at a time.</p>
+            <div className="mt-6 flex justify-center gap-2">
+              <Button onClick={() => setBulkAddOpen(true)}>
+                <ListPlus /> Add many
+              </Button>
+              <Button variant="outline" onClick={() => setQuickAddOpen(true)}>
+                <Plus /> Quick add
+              </Button>
+            </div>
+          </div>
         ) : visible.length === 0 ? (
           <div className="py-24 text-center">
             <p className="font-serif text-2xl">No books match.</p>

@@ -10,6 +10,8 @@ import type {
 
 /** Everything the app holds, loaded in one read. */
 export interface LibrarySnapshot {
+  /** Format version, used to run one-time changes on load. Missing on libraries saved before versions existed. */
+  version?: number;
   books: Book[];
   highlights: Highlight[];
   sessions: ReadingSession[];
@@ -35,7 +37,4 @@ export interface LibraryRepository {
   logPages(bookId: string, date: string, pages: number): Promise<ReadingSession | null>;
 
   setGoal(goal: ReadingGoal): Promise<ReadingGoal>;
-
-  /** Drops local changes and restores the seed library. */
-  reset(): Promise<LibrarySnapshot>;
 }

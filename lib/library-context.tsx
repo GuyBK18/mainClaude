@@ -20,7 +20,6 @@ interface LibraryContextValue {
   addHighlight: (input: NewHighlight) => Promise<void>;
   deleteHighlight: (id: string) => Promise<void>;
   setGoal: (goal: ReadingGoal) => Promise<void>;
-  reset: () => Promise<void>;
 }
 
 const LibraryContext = createContext<LibraryContextValue | null>(null);
@@ -126,13 +125,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     [repo, refresh],
   );
 
-  const reset = useCallback(async () => {
-    setData(await repo.reset());
-  }, [repo]);
-
   const value = useMemo(
-    () => ({ data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, reset }),
-    [data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, reset],
+    () => ({ data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal }),
+    [data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal],
   );
 
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;

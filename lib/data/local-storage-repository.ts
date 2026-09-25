@@ -2,7 +2,7 @@ import type { Book, BookPatch, NewBook, NewHighlight, ReadingGoal } from "@/type
 import { today } from "@/lib/dates";
 import { slugify, uid } from "@/lib/utils";
 import type { LibraryRepository, LibrarySnapshot } from "./repository";
-import { buildSeed } from "./seed";
+import { CURRENT_VERSION, emptyLibrary, migrate } from "./migrations";
 
 const STORAGE_KEY = "luminaread:library:v1";
 
@@ -15,18 +15,28 @@ export class LocalStorageRepository implements LibraryRepository {
 
   private read(): LibrarySnapshot {
     if (this.memory) return this.memory;
+    let raw: string | null = null;
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        this.memory = JSON.parse(raw) as LibrarySnapshot;
-        return this.memory;
+        const stored = JSON.parse(raw) as LibrarySnapshot;
+        if (stored.version === CURRENT_VERSION) {
+          this.memory = stored;
+        } else {
+          this.write(migrate(stored));
+        }
+        return this.memory!;
       }
     } catch {
-      // Unreadable or corrupt storage: start again from the seed.
+      // Unreadable storage. Its text is kept under another key so it can still be recovered by hand.
+      try {
+        if (raw) window.localStorage.setItem(`${STORAGE_KEY}:unreadable`, raw);
+      } catch {
+        // Nowhere to keep it.
+      }
     }
-    this.memory = buildSeed(today());
-    this.write(this.memory);
-    return this.memory;
+    this.write(emptyLibrary());
+    return this.memory!;
   }
 
   private write(next: LibrarySnapshot) {
@@ -106,11 +116,5 @@ export class LocalStorageRepository implements LibraryRepository {
     const goals = [...data.goals.filter((g) => g.year !== goal.year), goal];
     this.write({ ...data, goals });
     return goal;
-  }
-
-  async reset() {
-    const seed = buildSeed(today());
-    this.write(seed);
-    return structuredClone(seed);
   }
 }

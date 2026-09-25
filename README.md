@@ -11,7 +11,7 @@ npm run dev        # http://localhost:3000
 
 Other scripts: `npm run build`, `npm run lint`, `npm run typecheck`, `npm test`.
 
-The first load writes a seed library of 31 books, a year of reading sessions and some highlights. Dates are relative to the day you first open the app, so the dashboard always has a current year to show. To start over, clear the `luminaread:library:v1` key in LocalStorage.
+The library starts empty. It is saved in the browser's LocalStorage under `luminaread:library:v1`. Earlier versions filled a new library with 31 sample books. On the first load after the update, those sample books are removed once, with their highlights, reading sessions and sample goal. Books you added stay. If the stored library ever cannot be read, the app starts empty and keeps the unreadable text under `luminaread:library:v1:unreadable`.
 
 ## Stack
 
@@ -36,8 +36,7 @@ The shadcn registry could not be reached while building, so the components in `c
 types/reading.ts                    Book, Highlight, SeriesInfo, ReadingStatus, ReadingSession, ReadingGoal
 lib/data/repository.ts              LibraryRepository interface (all methods async)
 lib/data/local-storage-repository.ts  LocalStorage implementation
-lib/data/seed.json                  Seed catalog with relative dates
-lib/data/seed.ts                    Turns the catalog into dated books and daily sessions
+lib/data/migrations.ts              One-time changes to a stored library, run on load by its version
 lib/data/index.ts                   getRepository(): the one place that picks the source
 lib/library-context.tsx             React provider the UI reads from
 ```
