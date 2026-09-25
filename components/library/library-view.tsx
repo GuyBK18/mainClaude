@@ -17,7 +17,7 @@ import {
   type SortDir,
   type SortKey,
 } from "@/lib/library-filter";
-import { easeOut } from "@/lib/motion";
+import { easeOut, type Direction } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs } from "@/components/ui/tabs";
@@ -28,6 +28,7 @@ import { LibraryShelf } from "./library-shelf";
 import { LibraryTable } from "./library-table";
 
 type View = "grid" | "shelf" | "table";
+const STATUS_ORDER: (ReadingStatus | "all")[] = ["all", "reading", "tbr", "completed", "dnf"];
 const VIEW_KEY = "luminaread:library-view";
 
 function readView(): View {
@@ -46,6 +47,8 @@ export function LibraryView() {
   const [view, setView] = useState<View>("grid");
   const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "added", dir: "desc" });
+  // Books slide toward the side of the status tab picked; other filters change the list in place.
+  const [direction, setDirection] = useState<Direction>(0);
 
   useEffect(() => setView(readView()), []);
 
@@ -56,6 +59,16 @@ export function LibraryView() {
     } catch {
       // Not persisted; the view still switches.
     }
+  };
+
+  const changeStatus = (status: ReadingStatus | "all") => {
+    setDirection(Math.sign(STATUS_ORDER.indexOf(status) - STATUS_ORDER.indexOf(filters.status)) as Direction);
+    setFilters((f) => ({ ...f, status }));
+  };
+
+  const changeFilters = (next: LibraryFilters) => {
+    setDirection(0);
+    setFilters(next);
   };
 
   const onSort = (key: SortKey) =>
@@ -102,7 +115,7 @@ export function LibraryView() {
       <div className="mb-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
         <Tabs
           value={filters.status}
-          onValueChange={(status) => setFilters((f) => ({ ...f, status }))}
+          onValueChange={changeStatus}
           items={statusTabs}
           layoutId="library-status"
           aria-label="Reading status"
@@ -147,7 +160,7 @@ export function LibraryView() {
         </div>
       </div>
 
-      <LibraryFilterBar filters={filters} onChange={setFilters} resultCount={visible.length} />
+      <LibraryFilterBar filters={filters} onChange={changeFilters} resultCount={visible.length} />
 
       <div className="mt-10">
         {!data ? (
@@ -161,7 +174,7 @@ export function LibraryView() {
             <p className="font-serif text-2xl">No books match.</p>
             <button
               type="button"
-              onClick={() => setFilters(DEFAULT_FILTERS)}
+              onClick={() => changeFilters(DEFAULT_FILTERS)}
               className="mt-3 font-display text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
             >
               Clear all filters
@@ -176,8 +189,8 @@ export function LibraryView() {
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.2, ease: easeOut }}
             >
-              {view === "grid" && <LibraryGrid books={visible} />}
-              {view === "shelf" && <LibraryShelf books={visible} />}
+              {view === "grid" && <LibraryGrid books={visible} direction={direction} />}
+              {view === "shelf" && <LibraryShelf books={visible} direction={direction} />}
               {view === "table" && <LibraryTable books={visible} sort={sort} onSort={onSort} />}
             </motion.div>
           </AnimatePresence>

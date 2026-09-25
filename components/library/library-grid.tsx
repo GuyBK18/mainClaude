@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Book } from "@/types/reading";
 import { STATUS_LABEL } from "@/lib/labels";
-import { layoutSpring } from "@/lib/motion";
+import { layoutSpring, swapVariants, type Direction } from "@/lib/motion";
 import { progressOf } from "@/lib/stats";
 import { BookCover } from "@/components/book/book-cover";
 import { RatingStars } from "@/components/book/rating";
@@ -32,17 +32,21 @@ function Meta({ book }: { book: Book }) {
   return <p className="mt-2.5 font-display text-[11px] text-muted-foreground">{STATUS_LABEL[book.status]} · {book.pageCount} pp</p>;
 }
 
-export function LibraryGrid({ books }: { books: Book[] }) {
+const item = swapVariants({ opacity: 0, scale: 0.96 });
+
+export function LibraryGrid({ books, direction = 0 }: { books: Book[]; direction?: Direction }) {
   return (
     <motion.ul layout className="grid grid-cols-2 gap-x-5 gap-y-12 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-      <AnimatePresence mode="popLayout" initial={false}>
-        {books.map((book) => (
+      <AnimatePresence mode="popLayout" initial={false} custom={{ direction, index: 0 }}>
+        {books.map((book, index) => (
           <motion.li
             layout
             key={book.id}
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15 } }}
+            variants={item}
+            custom={{ direction, index }}
+            initial="hidden"
+            animate="shown"
+            exit="gone"
             transition={layoutSpring}
           >
             <Link href={`/book/${book.id}`} className="group block outline-none">
