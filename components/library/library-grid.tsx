@@ -34,7 +34,16 @@ function Meta({ book }: { book: Book }) {
 
 const item = swapVariants({ opacity: 0, scale: 0.96 });
 
-export function LibraryGrid({ books, direction = 0 }: { books: Book[]; direction?: Direction }) {
+export function LibraryGrid({
+  books,
+  direction = 0,
+  showSeries = false,
+}: {
+  books: Book[];
+  direction?: Direction;
+  /** Names each book's series and number under the author, for the series sort. */
+  showSeries?: boolean;
+}) {
   return (
     <motion.ul layout className="grid grid-cols-2 gap-x-5 gap-y-12 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
       <AnimatePresence mode="popLayout" initial={false} custom={{ direction, index: 0 }}>
@@ -71,6 +80,11 @@ export function LibraryGrid({ books, direction = 0 }: { books: Book[]; direction
               <div className="mt-5">
                 <p className="line-clamp-2 font-serif text-[16px] leading-snug underline-offset-4 group-hover:underline">{book.title}</p>
                 <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{book.author}</p>
+                {showSeries && book.series && (
+                  <p className="mt-0.5 truncate font-display text-[11px] text-muted-foreground">
+                    {book.series.name} #{book.series.position}
+                  </p>
+                )}
                 <Meta book={book} />
               </div>
             </Link>

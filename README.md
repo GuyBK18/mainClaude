@@ -24,7 +24,7 @@ The shadcn registry could not be reached while building, so the components in `c
 | Route | What is there |
 | --- | --- |
 | `/` | Currently reading with ambient cover glow and a page slider, annual goal with a pace marker, KPI cards, a 53-week reading heatmap, recently finished |
-| `/library` | Grid, Display (books standing face out in 3D), Spines (books leaning at an angle) and a sortable table. Filters for status, genre, length and rating. Quick add and URL import |
+| `/library` | Grid, Display (books standing face out in 3D), Spines (books leaning at an angle) and a sortable table. Filters for status, genre, length and rating. Sorts by date added, title, author, series (each series first to last), genre, length or rating, and remembers the choice. Quick add, URL import and Add many |
 | `/book/[id]` | Cover over a blur of itself, editorial metadata, status and rating controls, rich text summary and review, highlights, quote card studio |
 | `/analytics` | Genre distribution, reading velocity (pages a day against book length), pages per month. Each chart has a table view |
 
@@ -86,6 +86,8 @@ Under the preview the dialog says which catalog gave which field, and notes any 
 Different editions often share one image, so the browser compares the covers before showing them. Each image goes through the app's cover route and is reduced to a small fingerprint: the shape of its light and dark areas, and the color of each region in a 4×6 grid. Covers that match on both show once. Square images (audiobooks), tiny placeholders and images that fail to load are left out. **Find more covers** shows the next five. When the first batch runs out, it asks the server for more: the next page of Goodreads' editions list, Open Library's editions and other Google Books volumes, all in the edition language. The button says so when nothing is left. The code is in `lib/metadata/covers.ts` (gathering), `lib/cover-compare.ts` (comparing) and `components/library/cover-picker.tsx`. You still choose the status, the format and your own rating, and every field stays editable before you save. The description appears on the book page under **About the book**.
 
 **Import from URL** takes a Goodreads book page, any link with an ISBN such as Open Library or Amazon, or any other book link, which is searched by the title in its address. A Goodreads link is the most exact way to add a book: that page wins every field it has, and Google Books and Open Library only fill what it lacks, such as a second cover.
+
+**Add many** (on the library page, or "Add many books from links" in the command palette) takes a pasted list of links and adds them in one go. Text around the links is ignored, so a list copied from notes or a chat works as it is. Each link goes through the same lookup as Import from URL, two at a time. You then see every book with its cover, series and page count, set the status per book or for all of them, and untick what you do not want. A book already in the library, or found twice in the list, starts unticked. A link that fails can be tried again, and a book with no page count asks for one. Finished books come in without reading dates, so they do not count toward the yearly goal or the heatmap until you add dates on the book page. The code is in `lib/bulk-add.ts` and `components/library/bulk-add-dialog.tsx`.
 
 ### How the lookup works
 

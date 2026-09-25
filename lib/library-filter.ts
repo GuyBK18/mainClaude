@@ -1,7 +1,7 @@
 import type { Book, Genre, ReadingStatus } from "@/types/reading";
 import { LENGTH_BUCKETS, type LengthBucket } from "@/lib/stats";
 
-export type SortKey = "added" | "title" | "author" | "genre" | "length" | "rating";
+export type SortKey = "added" | "title" | "author" | "series" | "genre" | "length" | "rating";
 export type SortDir = "asc" | "desc";
 
 export interface LibraryFilters {
@@ -30,6 +30,20 @@ export function filterBooks(books: Book[], f: LibraryFilters) {
 const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
 const sortTitle = (t: string) => t.replace(/^(the|a|an)\s+/i, "");
 const surname = (a: string) => a.split(" ").slice(-1)[0];
+const byTitle = (a: Book, b: Book) => collator.compare(sortTitle(a.title), sortTitle(b.title));
+
+/**
+ * Each series together, first book to last. The direction flips the order of the series only,
+ * never the order inside one. Books outside a series follow, by title.
+ */
+function bySeries(a: Book, b: Book, sign: number) {
+  if (!a.series || !b.series) return (a.series ? 0 : 1) - (b.series ? 0 : 1) || byTitle(a, b);
+  return (
+    sign * collator.compare(sortTitle(a.series.name), sortTitle(b.series.name)) ||
+    a.series.position - b.series.position ||
+    byTitle(a, b)
+  );
+}
 
 export function sortBooks(books: Book[], key: SortKey, dir: SortDir) {
   const sign = dir === "asc" ? 1 : -1;
@@ -45,6 +59,8 @@ export function sortBooks(books: Book[], key: SortKey, dir: SortDir) {
       case "author":
         r = collator.compare(surname(a.author), surname(b.author));
         break;
+      case "series":
+        return bySeries(a, b, sign);
       case "genre":
         r = collator.compare(a.genres[0] ?? "", b.genres[0] ?? "");
         break;
@@ -59,7 +75,7 @@ export function sortBooks(books: Book[], key: SortKey, dir: SortDir) {
         r = a.personalRating - b.personalRating;
         break;
     }
-    return r * sign || collator.compare(sortTitle(a.title), sortTitle(b.title));
+    return r * sign || byTitle(a, b);
   });
 }
 
@@ -67,6 +83,7 @@ export const SORT_LABEL: Record<SortKey, string> = {
   added: "Date added",
   title: "Title",
   author: "Author",
+  series: "Series",
   genre: "Genre",
   length: "Length",
   rating: "Rating",
@@ -77,6 +94,7 @@ export const SORT_DEFAULT_DIR: Record<SortKey, SortDir> = {
   added: "desc",
   title: "asc",
   author: "asc",
+  series: "asc",
   genre: "asc",
   length: "desc",
   rating: "desc",

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { BarChart3, BookOpen, LayoutDashboard, Library, Moon, Plus, Quote, Sun } from "lucide-react";
+import { BarChart3, BookOpen, LayoutDashboard, Library, ListPlus, Moon, Plus, Quote, Sun } from "lucide-react";
 import { useLibrary } from "@/lib/library-context";
 import { useUI } from "@/lib/ui-context";
 import { STATUS_LABEL } from "@/lib/labels";
@@ -38,7 +38,7 @@ function matchAllWords(value: string, search: string) {
 export function CommandPalette() {
   const router = useRouter();
   const { data } = useLibrary();
-  const { commandOpen, setCommandOpen, setQuickAddOpen } = useUI();
+  const { commandOpen, setCommandOpen, setQuickAddOpen, setBulkAddOpen } = useUI();
   const { resolvedTheme, setTheme } = useTheme();
   const [search, setSearch] = useState("");
 
@@ -143,6 +143,9 @@ export function CommandPalette() {
               <CommandGroup heading="Actions">
                 <CommandItem value="add new book import url" onSelect={() => run(() => setQuickAddOpen(true))}>
                   <Plus className="size-4 text-muted-foreground" /> Add a book
+                </CommandItem>
+                <CommandItem value="add many books bulk list links goodreads import" onSelect={() => run(() => setBulkAddOpen(true))}>
+                  <ListPlus className="size-4 text-muted-foreground" /> Add many books from links
                 </CommandItem>
                 <CommandItem
                   value="theme toggle dark light paper obsidian"

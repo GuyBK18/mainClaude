@@ -25,7 +25,7 @@ type Mode = "search" | "manual" | "url";
 export function QuickAddDialog() {
   const router = useRouter();
   const { addBook } = useLibrary();
-  const { quickAddOpen, setQuickAddOpen } = useUI();
+  const { quickAddOpen, setQuickAddOpen, setBulkAddOpen } = useUI();
   const [mode, setMode] = useState<Mode>("search");
   const [values, setValues] = useState<BookFormValues>(emptyValues);
   const [details, setDetails] = useState<BookDetails | null>(null);
@@ -157,6 +157,19 @@ export function QuickAddDialog() {
           A Goodreads book page is the most exact: every field loads from that page. Links with an ISBN (Open Library,
           Amazon) also load the full record. Other links are searched by the title in the address and give you a list
           to pick from.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Have a list of links?{" "}
+          <button
+            type="button"
+            onClick={() => {
+              close();
+              setBulkAddOpen(true);
+            }}
+            className="text-foreground underline underline-offset-4 hover:no-underline"
+          >
+            Add them all at once
+          </button>
         </p>
       </form>
     );

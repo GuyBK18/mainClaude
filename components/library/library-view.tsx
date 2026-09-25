@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDown, ArrowDownUp, ArrowUp, Box, LayoutGrid, Library, Plus, Rows3 } from "lucide-react";
+import { ArrowDown, ArrowDownUp, ArrowUp, Box, LayoutGrid, Library, ListPlus, Plus, Rows3 } from "lucide-react";
 import type { ReadingStatus } from "@/types/reading";
 import { useLibrary } from "@/lib/library-context";
 import { useUI } from "@/lib/ui-context";
@@ -33,6 +33,7 @@ import { LibraryTable } from "./library-table";
 type View = "grid" | "shelf" | "leaning" | "table";
 const STATUS_ORDER: (ReadingStatus | "all")[] = ["all", "reading", "tbr", "completed", "dnf"];
 const VIEW_KEY = "luminaread:library-view";
+const SORT_KEY = "luminaread:library-sort";
 
 function readView(): View {
   try {
@@ -44,17 +45,41 @@ function readView(): View {
   return "grid";
 }
 
+type Sort = { key: SortKey; dir: SortDir };
+const DEFAULT_SORT: Sort = { key: "added", dir: "desc" };
+
+function readSort(): Sort {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SORT_KEY) ?? "null") as Partial<Sort> | null;
+    if (saved?.key && saved.key in SORT_LABEL && (saved.dir === "asc" || saved.dir === "desc")) return saved as Sort;
+  } catch {
+    // Storage blocked or unreadable; fall back to newest first.
+  }
+  return DEFAULT_SORT;
+}
+
+function saveSort(sort: Sort) {
+  try {
+    window.localStorage.setItem(SORT_KEY, JSON.stringify(sort));
+  } catch {
+    // Not persisted; the sort still applies.
+  }
+}
+
 export function LibraryView() {
   const { data } = useLibrary();
-  const { setQuickAddOpen } = useUI();
+  const { setQuickAddOpen, setBulkAddOpen } = useUI();
   const [view, setView] = useState<View>("grid");
   const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS);
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "added", dir: "desc" });
+  const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
   // Books slide toward the side of the status tab picked; other filters change the list in place.
   const [direction, setDirection] = useState<Direction>(0);
   const [leaning, setLeaning] = useLeaningSettings();
 
-  useEffect(() => setView(readView()), []);
+  useEffect(() => {
+    setView(readView());
+    setSort(readSort());
+  }, []);
 
   const changeView = (next: View) => {
     setView(next);
@@ -76,7 +101,11 @@ export function LibraryView() {
   };
 
   const onSort = (key: SortKey) =>
-    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: SORT_DEFAULT_DIR[key] }));
+    setSort((s) => {
+      const next: Sort = s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: SORT_DEFAULT_DIR[key] };
+      saveSort(next);
+      return next;
+    });
 
   const books = useMemo(() => data?.books ?? [], [data]);
   const visible = useMemo(() => sortBooks(filterBooks(books, filters), sort.key, sort.dir), [books, filters, sort]);
@@ -110,9 +139,14 @@ export function LibraryView() {
             : undefined
         }
         actions={
-          <Button variant="outline" onClick={() => setQuickAddOpen(true)}>
-            <Plus /> Quick add
-          </Button>
+          <>
+            <Button variant="ghost" onClick={() => setBulkAddOpen(true)}>
+              <ListPlus /> Add many
+            </Button>
+            <Button variant="outline" onClick={() => setQuickAddOpen(true)}>
+              <Plus /> Quick add
+            </Button>
+          </>
         }
       />
 
@@ -195,7 +229,7 @@ export function LibraryView() {
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.2, ease: easeOut }}
             >
-              {view === "grid" && <LibraryGrid books={visible} direction={direction} />}
+              {view === "grid" && <LibraryGrid books={visible} direction={direction} showSeries={sort.key === "series"} />}
               {view === "shelf" && <LibraryShelf books={visible} direction={direction} />}
               {view === "leaning" && <LeaningShelf books={visible} settings={leaning} direction={direction} />}
               {view === "table" && <LibraryTable books={visible} sort={sort} onSort={onSort} />}

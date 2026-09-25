@@ -7,6 +7,9 @@ interface UIContextValue {
   setCommandOpen: (open: boolean) => void;
   quickAddOpen: boolean;
   setQuickAddOpen: (open: boolean) => void;
+  /** The dialog that adds a pasted list of links in one go. */
+  bulkAddOpen: boolean;
+  setBulkAddOpen: (open: boolean) => void;
 }
 
 const UIContext = createContext<UIContextValue | null>(null);
@@ -14,10 +17,22 @@ const UIContext = createContext<UIContextValue | null>(null);
 export function UIProvider({ children }: { children: React.ReactNode }) {
   const [commandOpen, setCommandOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpenState] = useState(false);
+  const [bulkAddOpen, setBulkAddOpenState] = useState(false);
 
   const setQuickAddOpen = useCallback((open: boolean) => {
-    if (open) setCommandOpen(false);
+    if (open) {
+      setCommandOpen(false);
+      setBulkAddOpenState(false);
+    }
     setQuickAddOpenState(open);
+  }, []);
+
+  const setBulkAddOpen = useCallback((open: boolean) => {
+    if (open) {
+      setCommandOpen(false);
+      setQuickAddOpenState(false);
+    }
+    setBulkAddOpenState(open);
   }, []);
 
   useEffect(() => {
@@ -32,8 +47,8 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ commandOpen, setCommandOpen, quickAddOpen, setQuickAddOpen }),
-    [commandOpen, quickAddOpen, setQuickAddOpen],
+    () => ({ commandOpen, setCommandOpen, quickAddOpen, setQuickAddOpen, bulkAddOpen, setBulkAddOpen }),
+    [commandOpen, quickAddOpen, setQuickAddOpen, bulkAddOpen, setBulkAddOpen],
   );
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
 }

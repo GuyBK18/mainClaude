@@ -8,6 +8,11 @@ import { today } from "@/lib/dates";
 interface LibraryContextValue {
   data: LibrarySnapshot | null;
   addBook: (input: NewBook) => Promise<Book>;
+  /**
+   * Adds several books with one refresh at the end. Logs no reading: these books were read
+   * before, on days the app does not know.
+   */
+  addBooks: (inputs: NewBook[]) => Promise<Book[]>;
   updateBook: (id: string, patch: BookPatch) => Promise<void>;
   deleteBook: (id: string) => Promise<void>;
   /** Moves the bookmark and logs the page difference as today's reading. */
@@ -38,6 +43,16 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       }
       await refresh();
       return book;
+    },
+    [repo, refresh],
+  );
+
+  const addBooks = useCallback(
+    async (inputs: NewBook[]) => {
+      const books: Book[] = [];
+      for (const input of inputs) books.push(await repo.createBook(input));
+      await refresh();
+      return books;
     },
     [repo, refresh],
   );
@@ -116,8 +131,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   }, [repo]);
 
   const value = useMemo(
-    () => ({ data, addBook, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, reset }),
-    [data, addBook, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, reset],
+    () => ({ data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, reset }),
+    [data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, reset],
   );
 
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;

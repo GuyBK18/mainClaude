@@ -7,6 +7,7 @@ import { LibraryProvider } from "@/lib/library-context";
 import { UIProvider } from "@/lib/ui-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandPalette } from "@/components/shell/command-palette";
+import { BulkAddDialog } from "@/components/library/bulk-add-dialog";
 import { QuickAddDialog } from "@/components/library/quick-add-dialog";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               {children}
               <CommandPalette />
               <QuickAddDialog />
+              <BulkAddDialog />
               <Toaster
                 position="bottom-right"
                 toastOptions={{
