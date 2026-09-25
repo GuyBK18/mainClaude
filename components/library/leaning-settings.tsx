@@ -60,7 +60,7 @@ export function LeaningSettingsButton({
   return (
     <Popover>
       <PopoverTrigger
-        aria-label="Shelf settings"
+        aria-label="Spines view settings"
         className="pressable flex h-9 items-center gap-1.5 font-display text-[13px] text-muted-foreground transition-colors hover:text-foreground data-[state=open]:text-foreground"
       >
         <SlidersHorizontal className="size-3.5" />

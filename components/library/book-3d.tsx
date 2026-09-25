@@ -16,6 +16,9 @@ export function bookDimensions(book: Pick<Book, "format" | "pageCount">) {
   return { width, height, depth };
 }
 
+/** Distance from the bottom of a shelf row to where a book stands on the board. */
+export const SHELF_BASE = 30;
+
 const BASE_Y = 28; // turned so the spine shows on the left
 const BASE_X = -4; // seen from slightly above
 
@@ -61,12 +64,12 @@ export function Book3D({ book }: { book: Book }) {
       {/* Contact shadow on the plinth. Depth belongs to the cover layer, so this is allowed. */}
       <motion.span
         aria-hidden
-        className="absolute bottom-[10px] h-3 rounded-[50%] bg-black blur-md"
-        style={{ width: W * 0.95, scaleX: shadowScale, opacity: shadowOpacity }}
+        className="absolute h-3 rounded-[50%] bg-black blur-md"
+        style={{ bottom: SHELF_BASE - 6, width: W * 0.95, scaleX: shadowScale, opacity: shadowOpacity }}
       />
       <motion.div
-        className="relative mb-4"
-        style={{ width: W, height: H, transformStyle: "preserve-3d", transform }}
+        className="relative"
+        style={{ marginBottom: SHELF_BASE, width: W, height: H, transformStyle: "preserve-3d", transform }}
       >
         {/* Front */}
         <div className={face} style={{ width: W, height: H, transform: `translate(-50%, -50%) translateZ(${T / 2}px)` }}>

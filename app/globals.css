@@ -27,6 +27,14 @@
 
   --glow-opacity: 0.38;
 
+  /* The shelf board under the 3D views: top surface from the wall forward, the lit lip, the front face and its shadow on the wall. */
+  --shelf-back: #dbd5c9;
+  --shelf-top: #efebe4;
+  --shelf-lip: #fdfcfa;
+  --shelf-edge: #dcd6ca;
+  --shelf-under: #cbc4b6;
+  --shelf-shadow: rgb(60 45 25 / 0.16);
+
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
@@ -45,6 +53,13 @@
   --heat-4: #f2f0ec;
 
   --glow-opacity: 0.5;
+
+  --shelf-back: #131311;
+  --shelf-top: #201f1c;
+  --shelf-lip: #3a3833;
+  --shelf-edge: #1a1917;
+  --shelf-under: #0a0a09;
+  --shelf-shadow: rgb(0 0 0 / 0.55);
 }
 
 @theme inline {

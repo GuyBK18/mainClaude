@@ -7,8 +7,11 @@ import type { Book } from "@/types/reading";
 import { spinePalette } from "@/lib/cover";
 import { swapVariants, type Direction } from "@/lib/motion";
 import {
+  boardLines,
   DEFAULT_LEANING,
+  EYE_ABOVE,
   layoutRows,
+  PERSPECTIVE,
   PLINTH,
   pullTarget,
   shadowShift,
@@ -21,11 +24,12 @@ import {
   type Slab,
 } from "@/lib/leaning-shelf";
 import { BookCover } from "@/components/book/book-cover";
+import { shelfBoard } from "./shelf-board";
 
 const swap = swapVariants({ opacity: 0, y: 12 });
 
 /**
- * Books standing at an angle, pressed one against the next, the way they lean on a desk.
+ * The Spines view: books standing at an angle, pressed one against the next, the way they lean on a desk.
  * Pointing at a book slides it out along its cover and, in the "turn" mode, turns it to
  * face the reader. The motion math lives in `lib/leaning-shelf.ts`, where it is tested.
  */
@@ -96,15 +100,15 @@ function Shelves({ books, settings, width }: { books: Book[]; settings: LeaningS
           className="relative"
           style={{
             height: SHELF_HEIGHT,
-            perspective: 2200,
-            perspectiveOrigin: "50% -220px",
-            backgroundImage: `linear-gradient(to bottom, transparent calc(100% - 22px), var(--ink-3) calc(100% - 22px) calc(100% - 1px), var(--border) calc(100% - 1px))`,
+            perspective: PERSPECTIVE,
+            perspectiveOrigin: `50% -${EYE_ABOVE}px`,
+            backgroundImage: shelfBoard({ ...boardLines(), row: SHELF_HEIGHT }),
           }}
         >
           {/* Contact shadows, flat and behind every book. Depth belongs to the cover layer, so this is allowed. */}
           <div aria-hidden className="absolute inset-0">
             {row.map((placed) => (
-              <span key={books[placed.index].id} ref={motionState.shadowRef(books[placed.index].id)} className="absolute bottom-[10px] h-3 origin-[30%_50%]">
+              <span key={books[placed.index].id} ref={motionState.shadowRef(books[placed.index].id)} className="absolute h-3 origin-[30%_50%]" style={{ bottom: PLINTH - 6 }}>
                 <span className="absolute inset-0 rounded-[50%] bg-black opacity-45 blur-[7px] dark:opacity-70" />
               </span>
             ))}

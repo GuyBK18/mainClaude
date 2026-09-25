@@ -29,6 +29,7 @@ import { LibraryGrid } from "./library-grid";
 import { LibraryShelf } from "./library-shelf";
 import { LibraryTable } from "./library-table";
 
+/** Stored names. "shelf" shows as Display and "leaning" as Spines; the stored names stay so saved choices still work. */
 type View = "grid" | "shelf" | "leaning" | "table";
 const STATUS_ORDER: (ReadingStatus | "all")[] = ["all", "reading", "tbr", "completed", "dnf"];
 const VIEW_KEY = "luminaread:library-view";
@@ -157,8 +158,8 @@ export function LibraryView() {
             aria-label="View"
             items={[
               { value: "grid", label: <ViewLabel>Grid</ViewLabel>, icon: <LayoutGrid /> },
-              { value: "shelf", label: <ViewLabel>Shelf</ViewLabel>, icon: <Box /> },
-              { value: "leaning", label: <ViewLabel>Leaning</ViewLabel>, icon: <Library /> },
+              { value: "shelf", label: <ViewLabel>Display</ViewLabel>, icon: <Box /> },
+              { value: "leaning", label: <ViewLabel>Spines</ViewLabel>, icon: <Library /> },
               { value: "table", label: <ViewLabel>Table</ViewLabel>, icon: <Rows3 /> },
             ]}
           />

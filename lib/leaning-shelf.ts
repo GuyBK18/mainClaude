@@ -61,10 +61,30 @@ const FORWARD = 40;
 const LIFT = 20;
 /** Room left between a slid-out book and the next one before it may turn. */
 const CLEARANCE = 12;
-/** Height of one shelf: the tallest book, the plinth it stands on and room above for lifting. */
-export const SHELF_HEIGHT = 212 + 16 + 64;
+/** Height of one shelf: room above for lifting, the tallest book, and the board it stands on. */
+export const SHELF_HEIGHT = 44 + 212 + 44;
 /** Distance from the bottom of a shelf to where the books stand. */
-export const PLINTH = 16;
+export const PLINTH = 44;
+/** The camera: its distance, and how far above a shelf's top it sits, so the books are seen from a little above. */
+export const PERSPECTIVE = 2200;
+export const EYE_ABOVE = 220;
+/** Half the depth of the board, front to back, and its thickness. */
+const BOARD_DEPTH = 76;
+const BOARD_THICKNESS = 10;
+
+/**
+ * Where the board's back, front and lower edge land on screen, in pixels from the top of a
+ * shelf, seen in the same perspective as the books so they stand on it and not over its edge.
+ */
+export function boardLines() {
+  const base = SHELF_HEIGHT - PLINTH;
+  const project = (y: number, z: number) => -EYE_ABOVE + (y + EYE_ABOVE) * (PERSPECTIVE / (PERSPECTIVE - z));
+  return {
+    back: Math.round(project(base, -BOARD_DEPTH)),
+    front: Math.round(project(base, BOARD_DEPTH)),
+    edge: Math.round(project(base + BOARD_THICKNESS, BOARD_DEPTH)),
+  };
+}
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 

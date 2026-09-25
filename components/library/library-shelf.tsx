@@ -3,14 +3,16 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { Book } from "@/types/reading";
 import { layoutSpring, swapVariants, type Direction } from "@/lib/motion";
-import { Book3D } from "./book-3d";
+import { Book3D, SHELF_BASE } from "./book-3d";
+import { shelfBoard } from "./shelf-board";
 
 const ROW = 292;
+const BASE = ROW - SHELF_BASE;
 
 /**
- * A gallery shelf: each row is a flat plinth drawn with a hairline and a faint ink band,
- * with the books standing on it in 3D. Rows come from a repeating background so they
- * line up with the grid however many books fit across.
+ * The Display view: books standing face out in 3D on a shelf board, the way a shop shows
+ * them. Boards come from a repeating background so they line up with the grid however many
+ * books fit across.
  */
 const item = swapVariants({ opacity: 0, y: 12 });
 
@@ -22,7 +24,9 @@ export function LibraryShelf({ books, direction = 0 }: { books: Book[]; directio
       style={{
         gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
         gridAutoRows: ROW,
-        backgroundImage: `repeating-linear-gradient(to bottom, transparent 0 ${ROW - 22}px, var(--ink-3) ${ROW - 22}px ${ROW - 1}px, var(--border) ${ROW - 1}px ${ROW}px)`,
+        // Each book has its own camera, so its front corners reach a few pixels below where it stands.
+        backgroundImage: shelfBoard({ back: BASE - 8, front: BASE + 12, edge: BASE + 20, row: ROW }),
+        backgroundSize: `100% ${ROW}px`,
       }}
     >
       <AnimatePresence mode="popLayout" initial={false} custom={{ direction, index: 0 }}>
