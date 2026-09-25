@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H localhost",
+    "dev": "NODE_OPTIONS=\"$NODE_OPTIONS --dns-result-order=ipv4first\" next dev -H localhost -p 3000",
     "build": "next build",
-    "start": "next start -H localhost",
+    "start": "NODE_OPTIONS=\"$NODE_OPTIONS --dns-result-order=ipv4first\" next start -H localhost -p 3000",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

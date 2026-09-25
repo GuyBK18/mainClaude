@@ -9,7 +9,9 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-Needs Node.js 20.9 or later. Other scripts: `npm run build`, `npm run lint`, `npm run typecheck`, `npm test`. Only one `npm run dev` runs per project: a second one stops and names the running server and the command to stop it.
+Needs Node.js 20.9 or later. Other scripts: `npm run build`, `npm run lint`, `npm run typecheck`, `npm test`. Only one `npm run dev` runs at a time. The app always runs at http://localhost:3000, because the browser keeps the library per address. If port 3000 is taken, by this app or another, `npm run dev` stops with "address already in use" instead of moving to another port. `lsof -ti tcp:3000 | xargs kill` stops whatever holds it.
+
+The server listens on 127.0.0.1. On a Mac, Node otherwise reads `localhost` as the IPv6 address `::1`, and tools that check `127.0.0.1:3000`, such as a launcher, see nothing running. The `--dns-result-order=ipv4first` option in the `dev` and `start` scripts prevents this.
 
 The library starts empty. It is saved in the browser's LocalStorage under `luminaread:library:v1`. Earlier versions filled a new library with 31 sample books. On the first load after the update, those sample books are removed once, with their highlights, reading sessions and sample goal. Books you added stay. If the stored library ever cannot be read, the app starts empty and keeps the unreadable text under `luminaread:library:v1:unreadable`.
 
