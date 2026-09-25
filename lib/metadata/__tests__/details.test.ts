@@ -345,6 +345,27 @@ describe("URL import", () => {
     expect(calls.some((u) => decodeURIComponent(u).includes("isbn:9780061054884"))).toBe(true);
   });
 
+  it("takes every field from a pasted Goodreads page first, and the other catalogs only fill gaps", async () => {
+    const volume = JSON.parse(fixture("google-volume-piranesi.json"));
+    fakeFetch([
+      [/goodreads\.com\/book\/show\/13651/, html("goodreads-book-full.html", `${GR}/book/show/13651.The_Dispossessed`)],
+      [/googleapis\.com\/books\/v1\/volumes\?q=isbn/, { body: JSON.stringify({ totalItems: 1, items: [volume] }) }],
+      catalogRoutes.googleVolume,
+      [/openlibrary\.org\/search\.json/, { body: '{"docs":[]}' }],
+    ]);
+    const res = await lookupUrl(`${GR}/book/show/13651.The_Dispossessed`);
+    if (!("details" in res)) throw new Error("expected one book");
+    const d = res.details;
+    expect(d.description).toBe("A bleak moon settled by utopian anarchists.\n\nShevek, a brilliant physicist, decides to take action.");
+    expect(d.publisher).toBe("Harper Voyager");
+    expect(d.publishedYear).toBe(1974);
+    expect(d.pageCount).toBe(387);
+    expect(d.genres[0]).toBe("Science Fiction");
+    expect(d.provenance).toMatchObject({ description: "goodreads", publisher: "goodreads", publishedYear: "goodreads", genres: "goodreads", coverUrl: "goodreads" });
+    // Google still offers the second cover.
+    expect(d.covers.map((c) => c.source)).toEqual(["goodreads", "googlebooks"]);
+  });
+
   it("searches the ISBN in an Amazon link", async () => {
     const calls = fakeFetch([catalogRoutes.googleSearch, catalogRoutes.olSearch]);
     const res = await lookupUrl("https://www.amazon.com/Left-Hand-Darkness-Ursula-Guin/dp/0441478123");

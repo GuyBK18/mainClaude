@@ -79,7 +79,7 @@ Books come in English. The search asks both catalogs for English editions only, 
 
 Under the preview the dialog says which catalog gave which field, and notes any catalog that did not answer. Under **Your copy** there are three covers side by side: two images found in the catalogs and one typeset cover in the library's own palettes, the same kind the seed books use. Click one or use the arrow keys. A cover image that fails to load drops out of the row. You still choose the status, the format and your own rating, and every field stays editable before you save. The description appears on the book page under **About the book**.
 
-**Import from URL** takes a Goodreads book page (full record), any link with an ISBN such as Open Library or Amazon (full record), or any other book link, which is searched by the title in its address.
+**Import from URL** takes a Goodreads book page, any link with an ISBN such as Open Library or Amazon, or any other book link, which is searched by the title in its address. A Goodreads link is the most exact way to add a book: that page wins every field it has, and Google Books and Open Library only fill what it lacks, such as a second cover.
 
 ### How the lookup works
 

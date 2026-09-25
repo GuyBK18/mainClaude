@@ -154,8 +154,9 @@ export function QuickAddDialog() {
           </Button>
         </div>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Goodreads book pages and links with an ISBN (Open Library, Amazon) load the full record. Other links are
-          searched by the title in the address and give you a list to pick from.
+          A Goodreads book page is the most exact: every field loads from that page. Links with an ISBN (Open Library,
+          Amazon) also load the full record. Other links are searched by the title in the address and give you a list
+          to pick from.
         </p>
       </form>
     );

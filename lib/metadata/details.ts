@@ -101,8 +101,13 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
   }
 
   const provenance: BookDetails["provenance"] = {};
+  // A Goodreads page the reader pasted is their own pick: it wins every field it has, and
+  // the other catalogs only fill what it lacks.
+  const readerPicked = Boolean(c.refs.goodreadsUrl);
+  const goodreadsFirst = <T,>(offers: Offer<T>[]) =>
+    readerPicked ? [...offers.filter(([s]) => s === "goodreads"), ...offers.filter(([s]) => s !== "goodreads")] : offers;
   const pick = <T,>(field: DetailField, offers: Offer<T>[]): T | undefined => {
-    const hit = offers.find(([source, value]) => source && value !== undefined && value !== null && value !== "");
+    const hit = goodreadsFirst(offers).find(([source, value]) => source && value !== undefined && value !== null && value !== "");
     if (hit) provenance[field] = hit[0];
     return hit?.[1];
   };
@@ -169,17 +174,18 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
   ];
   if (lang === "en") coverOffers.push(["openlibrary", ol?.coverUrl]);
   const covers: CoverOption[] = [];
-  for (const [source, url] of coverOffers) {
+  for (const [source, url] of goodreadsFirst(coverOffers)) {
     if (source && url && !covers.some((cv) => cv.url === url) && covers.length < MAX_COVERS) covers.push({ url, source });
   }
   if (covers[0]) provenance.coverUrl = covers[0].source;
   if (series && seriesSource) provenance.series = seriesSource;
 
-  const genreSources = [
+  const allGenreSources = [
     { source: "goodreads" as const, labels: grAny?.categories ?? [], weight: 5 },
     { source: "googlebooks" as const, labels: googleAny?.categories ?? [], weight: 2 },
     { source: "openlibrary" as const, labels: ol?.categories ?? [], weight: 1 },
   ];
+  const genreSources = readerPicked && grAny?.categories?.length ? allGenreSources.slice(0, 1) : allGenreSources;
   const genres = mapGenres(genreSources);
   const genreSource = genreSources.find((s) => s.labels.length)?.source;
   if (genres.length && genreSource) provenance.genres = genreSource;
