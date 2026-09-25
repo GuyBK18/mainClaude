@@ -28,6 +28,12 @@ describe("Goodreads book page", () => {
     expect(d.coverUrl).toMatch(/13651\.jpg$/);
   });
 
+  it("takes the rating the page shows when the app data disagrees", () => {
+    const page = fixture("goodreads-book-full.html").replace('"averageRating": 4.23, "ratingsCount": 131585', '"averageRating": 3.9, "ratingsCount": 12');
+    const d = parseGoodreadsBook(page, `${GR}/book/show/13651.The_Dispossessed`);
+    expect(d.rating).toEqual({ value: 4.23, count: 131585, source: "goodreads" });
+  });
+
   it("falls back to the visible HTML when the structured data is missing", () => {
     const d = parseGoodreadsBook(fixture("goodreads-book-htmlonly.html"), `${GR}/book/show/18423.The_Left_Hand_of_Darkness`);
     expect(d.title).toBe("The Left Hand of Darkness");

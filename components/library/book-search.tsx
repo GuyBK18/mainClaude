@@ -9,7 +9,6 @@ import { generatedCover } from "@/lib/cover";
 import { languageName } from "@/lib/metadata/text";
 import { cn } from "@/lib/utils";
 import { BookCover } from "@/components/book/book-cover";
-import { RatingStars } from "@/components/book/rating";
 
 const DEBOUNCE_MS = 450;
 
@@ -66,10 +65,9 @@ function ResultRow({
             {c.authors.slice(0, 3).join(", ") || "Unknown author"}
             {c.year ? ` · ${c.year}` : ""}
           </p>
-          {/* On narrow screens the rating and sources move under the author. */}
+          {/* On narrow screens the sources move under the author. */}
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 sm:hidden">
             {loading && <Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-hidden />}
-            {c.rating && <RatingStars value={Math.round(c.rating.value * 2) / 2} size="size-3" />}
             <span className="font-display text-[10px] tracking-wide text-muted-foreground">{c.sources.map((s) => SOURCE_LABEL[s]).join(" + ")}</span>
           </p>
           <Meta c={c} />
@@ -80,16 +78,8 @@ function ResultRow({
           )}
         </div>
         <div className="hidden shrink-0 flex-col items-end gap-1.5 pt-1 sm:flex">
-          {loading ? (
-            <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Loading details" />
-          ) : (
-            c.rating && (
-              <span className="flex items-center gap-1.5" title={`${c.rating.count.toLocaleString("en")} ratings on ${SOURCE_LABEL[c.rating.source]}`}>
-                <RatingStars value={Math.round(c.rating.value * 2) / 2} size="size-3" />
-                <span className="tabular font-display text-[11px] text-muted-foreground">{c.rating.value.toFixed(1)}</span>
-              </span>
-            )
-          )}
+          {/* No rating here: these catalogs' averages differ from Goodreads, which is read after picking. */}
+          {loading && <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Loading details" />}
           <span className="font-display text-[10px] tracking-wide text-muted-foreground">
             {c.sources.map((s) => SOURCE_LABEL[s]).join(" + ")}
           </span>

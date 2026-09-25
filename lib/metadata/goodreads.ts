@@ -176,12 +176,12 @@ function fromHtml(html: string): PartialDetails {
 
 /** Reads a Goodreads book page. Earlier sources win per field; missing fields stay undefined. */
 export function parseGoodreadsBook(html: string, pageUrl: string): PartialDetails {
-  const layers: PartialDetails[] = [];
   const ld = jsonLdBook(html);
   const state = apolloState(html);
-  if (state) layers.push(fromApollo(state, pageUrl));
-  if (ld) layers.push(fromJsonLd(ld));
-  layers.push(fromHtml(html));
+  const apollo = state ? fromApollo(state, pageUrl) : undefined;
+  const declared = ld ? fromJsonLd(ld) : undefined;
+  const visible = fromHtml(html);
+  const layers = [apollo, declared, visible].filter((l): l is PartialDetails => l !== undefined);
 
   const merged: PartialDetails = {};
   for (const layer of layers) {
@@ -191,6 +191,9 @@ export function parseGoodreadsBook(html: string, pageUrl: string): PartialDetail
       }
     }
   }
+  // The rating is the one number a reader checks against the site, so take it as the page
+  // shows it: the visible text, then the page's declared data, then its app data.
+  merged.rating = visible.rating ?? declared?.rating ?? apollo?.rating;
   merged.coverUrl = fullSizeCover(merged.coverUrl);
   merged.url = absolute(pageUrl, pageUrl);
   return merged;
