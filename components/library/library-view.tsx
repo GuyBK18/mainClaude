@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDown, ArrowDownUp, ArrowUp, Box, LayoutGrid, Plus, Rows3 } from "lucide-react";
+import { ArrowDown, ArrowDownUp, ArrowUp, Box, LayoutGrid, Library, Plus, Rows3 } from "lucide-react";
 import type { ReadingStatus } from "@/types/reading";
 import { useLibrary } from "@/lib/library-context";
 import { useUI } from "@/lib/ui-context";
@@ -23,18 +23,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs } from "@/components/ui/tabs";
 import { LoadingBlock, PageHeader } from "@/components/shell/page-header";
 import { LibraryFilterBar } from "./library-filters";
+import { LeaningSettingsButton, useLeaningSettings } from "./leaning-settings";
+import { LeaningShelf } from "./leaning-shelf";
 import { LibraryGrid } from "./library-grid";
 import { LibraryShelf } from "./library-shelf";
 import { LibraryTable } from "./library-table";
 
-type View = "grid" | "shelf" | "table";
+type View = "grid" | "shelf" | "leaning" | "table";
 const STATUS_ORDER: (ReadingStatus | "all")[] = ["all", "reading", "tbr", "completed", "dnf"];
 const VIEW_KEY = "luminaread:library-view";
 
 function readView(): View {
   try {
     const v = window.localStorage.getItem(VIEW_KEY);
-    if (v === "grid" || v === "shelf" || v === "table") return v;
+    if (v === "grid" || v === "shelf" || v === "leaning" || v === "table") return v;
   } catch {
     // Storage blocked; fall back to the grid.
   }
@@ -49,6 +51,7 @@ export function LibraryView() {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "added", dir: "desc" });
   // Books slide toward the side of the status tab picked; other filters change the list in place.
   const [direction, setDirection] = useState<Direction>(0);
+  const [leaning, setLeaning] = useLeaningSettings();
 
   useEffect(() => setView(readView()), []);
 
@@ -122,6 +125,7 @@ export function LibraryView() {
           className="no-scrollbar -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0"
         />
         <div className="flex items-center gap-4">
+          {view === "leaning" && <LeaningSettingsButton settings={leaning} onChange={setLeaning} />}
           <Popover>
             <PopoverTrigger className="pressable flex h-9 items-center gap-1.5 font-display text-[13px] text-muted-foreground transition-colors hover:text-foreground data-[state=open]:text-foreground">
               <ArrowDownUp className="size-3.5" />
@@ -152,9 +156,10 @@ export function LibraryView() {
             layoutId="library-view"
             aria-label="View"
             items={[
-              { value: "grid", label: "Grid", icon: <LayoutGrid /> },
-              { value: "shelf", label: "Shelf", icon: <Box /> },
-              { value: "table", label: "Table", icon: <Rows3 /> },
+              { value: "grid", label: <ViewLabel>Grid</ViewLabel>, icon: <LayoutGrid /> },
+              { value: "shelf", label: <ViewLabel>Shelf</ViewLabel>, icon: <Box /> },
+              { value: "leaning", label: <ViewLabel>Leaning</ViewLabel>, icon: <Library /> },
+              { value: "table", label: <ViewLabel>Table</ViewLabel>, icon: <Rows3 /> },
             ]}
           />
         </div>
@@ -191,6 +196,7 @@ export function LibraryView() {
             >
               {view === "grid" && <LibraryGrid books={visible} direction={direction} />}
               {view === "shelf" && <LibraryShelf books={visible} direction={direction} />}
+              {view === "leaning" && <LeaningShelf books={visible} settings={leaning} direction={direction} />}
               {view === "table" && <LibraryTable books={visible} sort={sort} onSort={onSort} />}
             </motion.div>
           </AnimatePresence>
@@ -198,4 +204,9 @@ export function LibraryView() {
       </div>
     </>
   );
+}
+
+/** View names give way to their icons on phones, where four views share the row with sorting. */
+function ViewLabel({ children }: { children: string }) {
+  return <span className="sr-only sm:not-sr-only">{children}</span>;
 }

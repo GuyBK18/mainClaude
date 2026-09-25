@@ -24,7 +24,7 @@ The shadcn registry could not be reached while building, so the components in `c
 | Route | What is there |
 | --- | --- |
 | `/` | Currently reading with ambient cover glow and a page slider, annual goal with a pace marker, KPI cards, a 53-week reading heatmap, recently finished |
-| `/library` | Grid, 3D shelf and sortable table views. Filters for status, genre, length and rating. Quick add and URL import |
+| `/library` | Grid, 3D shelf, leaning shelf and sortable table views. Filters for status, genre, length and rating. Quick add and URL import |
 | `/book/[id]` | Cover over a blur of itself, editorial metadata, status and rating controls, rich text summary and review, highlights, quote card studio |
 | `/analytics` | Genre distribution, reading velocity (pages a day against book length), pages per month. Each chart has a table view |
 
@@ -57,6 +57,8 @@ Color and depth appear only on covers:
 - Books without an image get a typeset cover (five layouts) from a stored three-color palette.
 - `AmbientGlow` blurs that palette behind the cover. For books added with an image URL, the palette is read from the image in the browser when the host allows it.
 - The heatmap uses a five-step grayscale ramp. Steps 1 to 4 pass the dataviz skill's ordinal check against both surfaces.
+
+The **Leaning** view stands the books at an angle, pressed one against the next, so each shows its spine and a strip of cover. Pointing at a book slides it out along its own cover, which never touches its neighbors, and then either turns it to face you or leaves it at its angle. **Adjust** sets that choice, the angle (40° to 75°, default 62°) and how much of each cover shows (0 to 40 px, default 14 px). The settings stay in this browser. Only one book turns at a time: when the pointer moves on, the first book goes back before the next one turns. On a phone the first tap pulls a book out and the second opens it. Books with a cover image take their spine color from the image's left edge, with the title in cream or near-black, whichever stands out more. The books share one 3D scene, so the browser draws whichever is in front. The geometry is in `lib/leaning-shelf.ts`, and its tests check that no book passes through another at any angle, strip width or hand-off.
 
 Motion: springs for layout shifts (grid filtering, tab and view changes), 0.98 scale on press, short ease-out enters for dialogs and popovers. The command palette opens with no animation because it is a keyboard action used many times a day. `prefers-reduced-motion` is respected through `MotionConfig`.
 
