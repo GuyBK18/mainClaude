@@ -1,0 +1,51 @@
+{
+ "numFound": 2,
+ "start": 0,
+ "docs": [
+  {
+   "key": "/works/OL20812346W",
+   "title": "Piranesi",
+   "author_name": [
+    "Susanna Clarke"
+   ],
+   "first_publish_year": 2020,
+   "number_of_pages_median": 245,
+   "cover_i": 10523447,
+   "isbn": [
+    "1635575621",
+    "9781635575637",
+    "9781526622426"
+   ],
+   "publisher": [
+    "Bloomsbury"
+   ],
+   "language": [
+    "eng",
+    "heb"
+   ],
+   "subject": [
+    "Fantasy fiction",
+    "Labyrinths",
+    "Fiction, fantasy, general"
+   ],
+   "edition_count": 41,
+   "ratings_average": 4.12,
+   "ratings_count": 122,
+   "id_goodreads": [
+    "50202953"
+   ]
+  },
+  {
+   "key": "/works/OL1W",
+   "title": "Piranesi",
+   "subtitle": "The Complete Etchings",
+   "author_name": [
+    "Giovanni Battista Piranesi"
+   ],
+   "first_publish_year": 1994,
+   "edition_count": 3,
+   "ratings_average": 5,
+   "ratings_count": 1
+  }
+ ]
+}

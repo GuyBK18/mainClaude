@@ -1,4 +1,5 @@
 import type { CoverArt, CoverStyle } from "@/types/reading";
+import { proxiedCover } from "@/lib/metadata/client";
 
 /** Palettes for typeset covers when a book is added without an image. [ground, ink, accent] */
 const PALETTES: [string, string, string][] = [
@@ -35,11 +36,16 @@ function luminance([r, g, b]: number[]) {
 }
 
 /**
- * Reads the dominant colors of a cover image in the browser.
- * Returns null when the host blocks cross-origin reads, so callers keep the generated palette.
+ * Reads the dominant colors of a cover image in the browser. Goes through the app's
+ * same-origin cover proxy first, then the image itself. Returns null when neither can
+ * be read, so callers keep the generated palette.
  */
 export async function extractPalette(url: string): Promise<[string, string, string] | null> {
   if (typeof window === "undefined") return null;
+  return (await readPalette(proxiedCover(url))) ?? (await readPalette(url));
+}
+
+async function readPalette(url: string): Promise<[string, string, string] | null> {
   try {
     const img = new Image();
     img.crossOrigin = "anonymous";

@@ -1,0 +1,31 @@
+{
+ "kind": "books#volume",
+ "id": "zvI0EAAAQBAJ",
+ "volumeInfo": {
+  "title": "Piranesi",
+  "authors": [
+   "Susanna Clarke"
+  ],
+  "publisher": "Bloomsbury Publishing USA",
+  "publishedDate": "2020-09-15",
+  "description": "<p><b>From the <i>New York Times</i> bestselling author</b> of Jonathan Strange &amp; Mr. Norrell.</p><p>Piranesi&#39;s house is no ordinary building: its rooms are infinite, its corridors endless.</p>",
+  "industryIdentifiers": [
+   {
+    "type": "ISBN_13",
+    "identifier": "9781635575637"
+   }
+  ],
+  "pageCount": 272,
+  "printType": "BOOK",
+  "categories": [
+   "Fiction / Fantasy / Contemporary",
+   "Fiction / Literary"
+  ],
+  "imageLinks": {
+   "thumbnail": "http://books.google.com/books/content?id=zvI0EAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&imgtk=AFLRE7&source=gbs_api",
+   "extraLarge": "http://books.google.com/books/content?id=zvI0EAAAQBAJ&printsec=frontcover&img=1&zoom=6&edge=curl&imgtk=AFLRE7&source=gbs_api"
+  },
+  "language": "en",
+  "canonicalVolumeLink": "https://books.google.com/books/about/Piranesi.html?id=zvI0EAAAQBAJ"
+ }
+}

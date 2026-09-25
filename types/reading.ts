@@ -19,6 +19,9 @@ export type Genre =
   | "Poetry"
   | "Essays";
 
+/** Catalog a public rating came from. */
+export type RatingSource = "goodreads" | "openlibrary" | "googlebooks";
+
 /** Layout used when a book has no cover image and the cover is typeset instead. */
 export type CoverStyle = "band" | "frame" | "disc" | "split" | "type";
 
@@ -50,8 +53,14 @@ export interface Book {
   status: ReadingStatus;
   /** 0.5 to 5 in half steps, null when unrated. */
   personalRating: number | null;
-  /** Public average, 0 to 5. */
+  /**
+   * Public average, 0 to 5. Usually Goodreads; when a book is imported and Goodreads
+   * has no answer, `ratingSource` names the catalog the number came from instead.
+   */
   goodreadsRating: number | null;
+  ratingSource?: RatingSource;
+  /** How many ratings the public average is based on. */
+  ratingsCount?: number;
   publishedYear?: number;
   publisher?: string;
   isbn?: string;
@@ -65,6 +74,8 @@ export interface Book {
   /** Rich text (HTML) written in the vault. */
   review: string;
   summary: string;
+  /** Publisher's description from a catalog. Plain text, paragraphs split by blank lines. */
+  description?: string;
   sourceUrl?: string;
 }
 

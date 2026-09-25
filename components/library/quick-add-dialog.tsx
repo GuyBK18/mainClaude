@@ -3,28 +3,32 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Link2, Loader2, PenLine } from "lucide-react";
+import { Link2, Loader2, PenLine, Search } from "lucide-react";
 import { toast } from "sonner";
+import type { BookCandidate, BookDetails } from "@/lib/metadata/types";
+import { fetchDetails } from "@/lib/metadata/client";
 import { useLibrary } from "@/lib/library-context";
 import { useUI } from "@/lib/ui-context";
-import { importFromUrl, type ImportResult } from "@/lib/import";
 import { easeOut } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input, Label } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
-import { BookForm, emptyValues, toBookInput, validate, type BookFormValues } from "./book-form";
+import { BookForm, emptyValues, toBookInput, validate, valuesFromDetails, type BookFormValues } from "./book-form";
+import { BookSearch } from "./book-search";
+import { DetailsPreview } from "./details-preview";
 
-type Mode = "manual" | "url";
+type Mode = "search" | "manual" | "url";
 
 export function QuickAddDialog() {
   const router = useRouter();
   const { addBook } = useLibrary();
   const { quickAddOpen, setQuickAddOpen } = useUI();
-  const [mode, setMode] = useState<Mode>("manual");
+  const [mode, setMode] = useState<Mode>("search");
   const [values, setValues] = useState<BookFormValues>(emptyValues);
+  const [details, setDetails] = useState<BookDetails | null>(null);
   const [url, setUrl] = useState("");
-  const [imported, setImported] = useState<ImportResult | null>(null);
+  const [urlChoices, setUrlChoices] = useState<BookCandidate[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,12 +36,20 @@ export function QuickAddDialog() {
     setQuickAddOpen(false);
     // Reset after the dialog has gone so the form does not flash empty while closing.
     setTimeout(() => {
-      setMode("manual");
+      setMode("search");
       setValues(emptyValues());
+      setDetails(null);
       setUrl("");
-      setImported(null);
+      setUrlChoices(null);
       setError(null);
     }, 150);
+  };
+
+  const applyDetails = (d: BookDetails) => {
+    setDetails(d);
+    // Keep what the reader already chose for their own copy.
+    setValues((v) => valuesFromDetails(d, { ...emptyValues(), status: v.status, format: v.format }));
+    setError(null);
   };
 
   const runImport = async () => {
@@ -49,20 +61,16 @@ export function QuickAddDialog() {
       return;
     }
     setBusy(true);
-    const result = await importFromUrl(url);
-    setBusy(false);
-    setImported(result);
-    setValues((v) => ({
-      ...v,
-      title: result.title ?? v.title,
-      author: result.author ?? v.author,
-      pageCount: result.pageCount?.toString() ?? v.pageCount,
-      publishedYear: result.publishedYear?.toString() ?? v.publishedYear,
-      publisher: result.publisher ?? v.publisher,
-      coverUrl: result.coverUrl ?? v.coverUrl,
-      sourceUrl: result.sourceUrl,
-    }));
-    setMode("manual");
+    try {
+      const res = await fetchDetails({ url: url.trim() });
+      if ("details" in res) applyDetails(res.details);
+      else if (res.candidates.length) setUrlChoices(res.candidates);
+      else setError("Nothing in the catalogs matches that link. Try the Search tab.");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const save = async () => {
@@ -80,12 +88,74 @@ export function QuickAddDialog() {
     });
   };
 
+  const reviewing = details !== null && mode !== "manual";
+  const canSave = mode === "manual" || reviewing;
+
+  const review = details && (
+    <>
+      <DetailsPreview
+        details={details}
+        onBack={() => {
+          setDetails(null);
+          setError(null);
+        }}
+      />
+      <div className="mt-8 border-t border-foreground pt-5">
+        <p className="label-meta mb-5 text-foreground">Your copy</p>
+        <BookForm values={values} onChange={setValues} autoFocus={false} />
+      </div>
+    </>
+  );
+
+  let panel: React.ReactNode = null;
+  if (mode === "manual") {
+    panel = <BookForm values={values} onChange={setValues} />;
+  } else if (reviewing) {
+    panel = review;
+  } else if (mode === "url" && urlChoices) {
+    panel = (
+      <>
+        <p className="mb-4 text-sm text-muted-foreground">That link names a title but not an edition. Pick the one you mean.</p>
+        <BookSearch onDetails={applyDetails} initialCandidates={urlChoices} />
+      </>
+    );
+  } else if (mode === "url") {
+    panel = (
+      <form
+        className="grid gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void runImport();
+        }}
+      >
+        <Label htmlFor="import-url">Book URL</Label>
+        <div className="flex gap-2">
+          <Input
+            id="import-url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://www.goodreads.com/book/show/…"
+            autoFocus
+          />
+          <Button type="submit" variant="outline" disabled={!url.trim() || busy}>
+            {busy ? <Loader2 className="animate-spin" /> : null}
+            Fetch
+          </Button>
+        </div>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Goodreads book pages and links with an ISBN (Open Library, Amazon) load the full record. Other links are
+          searched by the title in the address and give you a list to pick from.
+        </p>
+      </form>
+    );
+  }
+
   return (
     <Dialog open={quickAddOpen} onOpenChange={(open) => (open ? setQuickAddOpen(true) : close())}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add a book</DialogTitle>
-          <DialogDescription>Type the details or paste a link to prefill them.</DialogDescription>
+          <DialogDescription>Search the catalogs and pick the right edition, or type the details yourself.</DialogDescription>
           <Tabs
             value={mode}
             onValueChange={(m) => {
@@ -96,61 +166,30 @@ export function QuickAddDialog() {
             aria-label="Add method"
             className="mt-3 -mb-[21px]"
             items={[
+              { value: "search", label: "Search", icon: <Search /> },
               { value: "manual", label: "Manual entry", icon: <PenLine /> },
               { value: "url", label: "Import from URL", icon: <Link2 /> },
             ]}
           />
         </DialogHeader>
 
-        <div className="overflow-y-auto px-6 py-6">
+        <div className="min-h-[320px] overflow-y-auto px-6 py-6">
+          {/* Search stays mounted under the review, so "Back to results" returns to the same list. */}
+          <div hidden={mode !== "search" || reviewing}>
+            <BookSearch onDetails={applyDetails} />
+          </div>
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={mode}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.16, ease: easeOut }}
-            >
-              {mode === "manual" ? (
-                <>
-                  {imported && (
-                    <p className="mb-5 border-l border-foreground pl-3 text-sm text-muted-foreground">
-                      {imported.source === "open-library"
-                        ? "Filled from Open Library. Check the fields, then save."
-                        : "Could not reach a catalog for that link, so only the title came from the URL. Fill in the rest."}
-                    </p>
-                  )}
-                  <BookForm values={values} onChange={setValues} defaultExpanded={Boolean(imported?.coverUrl)} />
-                </>
-              ) : (
-                <form
-                  className="grid gap-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void runImport();
-                  }}
-                >
-                  <Label htmlFor="import-url">Book URL</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="import-url"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://openlibrary.org/works/OL45804W"
-                      autoFocus
-                    />
-                    <Button type="submit" variant="outline" disabled={!url.trim() || busy}>
-                      {busy ? <Loader2 className="animate-spin" /> : null}
-                      Fetch
-                    </Button>
-                  </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Open Library links and any link with an ISBN fill in title, author, pages and cover. Goodreads,
-                    Amazon and other links fill in the title from the address.
-                  </p>
-                </form>
-              )}
-            </motion.div>
+            {panel && (
+              <motion.div
+                key={`${mode}-${reviewing ? "review" : urlChoices ? "choices" : "start"}`}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16, ease: easeOut }}
+              >
+                {panel}
+              </motion.div>
+            )}
           </AnimatePresence>
           {error && (
             <p role="alert" className="mt-4 text-sm text-foreground">
@@ -163,7 +202,7 @@ export function QuickAddDialog() {
           <Button variant="ghost" onClick={close}>
             Cancel
           </Button>
-          {mode === "manual" && (
+          {canSave && (
             <Button onClick={() => void save()} disabled={busy}>
               {busy && <Loader2 className="animate-spin" />}
               Add to library

@@ -3,13 +3,14 @@
 import { useId, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
-import type { Book, BookFormat, Genre, NewBook, ReadingStatus } from "@/types/reading";
-import { FORMAT_LABEL, FORMATS, GENRES, STATUS_LABEL, STATUSES } from "@/lib/labels";
+import type { Book, BookFormat, Genre, NewBook, RatingSource, ReadingStatus } from "@/types/reading";
+import type { BookDetails } from "@/lib/metadata/types";
+import { FORMAT_LABEL, FORMATS, GENRES, RATING_SOURCE_LABEL, STATUS_LABEL, STATUSES } from "@/lib/labels";
 import { extractPalette, generatedCover } from "@/lib/cover";
 import { today } from "@/lib/dates";
 import { easeOut } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { RatingInput } from "@/components/book/rating";
 
@@ -29,6 +30,14 @@ export interface BookFormValues {
   seriesPosition: string;
   coverUrl: string;
   sourceUrl: string;
+  subtitle: string;
+  isbn: string;
+  language: string;
+  description: string;
+  /** Carried from an import; not edited directly. */
+  ratingSource?: RatingSource;
+  ratingsCount?: number;
+  seriesTotal?: number;
 }
 
 export function emptyValues(): BookFormValues {
@@ -48,6 +57,10 @@ export function emptyValues(): BookFormValues {
     seriesPosition: "",
     coverUrl: "",
     sourceUrl: "",
+    subtitle: "",
+    isbn: "",
+    language: "",
+    description: "",
   };
 }
 
@@ -68,6 +81,38 @@ export function valuesFromBook(book: Book): BookFormValues {
     seriesPosition: book.series?.position.toString() ?? "",
     coverUrl: book.cover.url ?? "",
     sourceUrl: book.sourceUrl ?? "",
+    subtitle: book.subtitle ?? "",
+    isbn: book.isbn ?? "",
+    language: book.language ?? "",
+    description: book.description ?? "",
+    ratingSource: book.ratingSource,
+    ratingsCount: book.ratingsCount,
+    seriesTotal: book.series?.total,
+  };
+}
+
+/** Prefills the form from an imported record. Reading status and format stay the reader's call. */
+export function valuesFromDetails(details: BookDetails, base: BookFormValues = emptyValues()): BookFormValues {
+  return {
+    ...base,
+    title: details.title,
+    author: details.author,
+    pageCount: details.pageCount?.toString() ?? base.pageCount,
+    genres: details.genres.length ? details.genres : base.genres,
+    goodreadsRating: details.rating ? details.rating.value.toFixed(2) : "",
+    ratingSource: details.rating?.source,
+    ratingsCount: details.rating?.count,
+    publishedYear: details.publishedYear?.toString() ?? "",
+    publisher: details.publisher ?? "",
+    seriesName: details.series?.name ?? "",
+    seriesPosition: details.series?.position.toString() ?? "",
+    seriesTotal: details.series?.total,
+    coverUrl: details.coverUrl ?? "",
+    sourceUrl: details.sourceUrl ?? "",
+    subtitle: details.subtitle ?? "",
+    isbn: details.isbn ?? "",
+    language: details.language ?? "",
+    description: details.description ?? "",
   };
 }
 
@@ -109,10 +154,12 @@ export async function toBookInput(values: BookFormValues, existing?: Book): Prom
     status,
     personalRating: values.personalRating,
     goodreadsRating: num(values.goodreadsRating) ?? null,
+    ratingSource: num(values.goodreadsRating) !== undefined ? (values.ratingSource ?? existing?.ratingSource) : undefined,
+    ratingsCount: num(values.goodreadsRating) !== undefined ? (values.ratingsCount ?? existing?.ratingsCount) : undefined,
     publishedYear: num(values.publishedYear),
     publisher: values.publisher.trim() || undefined,
     series: values.seriesName.trim()
-      ? { name: values.seriesName.trim(), position: num(values.seriesPosition) ?? 1 }
+      ? { name: values.seriesName.trim(), position: num(values.seriesPosition) ?? 1, total: values.seriesTotal }
       : undefined,
     cover,
     startedAt: status === "tbr" ? existing?.startedAt : (existing?.startedAt ?? date),
@@ -120,9 +167,10 @@ export async function toBookInput(values: BookFormValues, existing?: Book): Prom
     review: existing?.review ?? "",
     summary: existing?.summary ?? "",
     sourceUrl: values.sourceUrl.trim() || undefined,
-    subtitle: existing?.subtitle,
-    isbn: existing?.isbn,
-    language: existing?.language,
+    subtitle: values.subtitle.trim() || undefined,
+    isbn: values.isbn.trim() || undefined,
+    language: values.language.trim() || undefined,
+    description: values.description.trim() || undefined,
     addedAt: existing?.addedAt,
   };
 }
@@ -131,10 +179,12 @@ export function BookForm({
   values,
   onChange,
   defaultExpanded = false,
+  autoFocus = true,
 }: {
   values: BookFormValues;
   onChange: (values: BookFormValues) => void;
   defaultExpanded?: boolean;
+  autoFocus?: boolean;
 }) {
   const id = useId();
   const [more, setMore] = useState(defaultExpanded);
@@ -147,7 +197,7 @@ export function BookForm({
     <div className="grid gap-5">
       <div className="grid gap-2">
         <Label htmlFor={`${id}-title`}>Title</Label>
-        <Input id={`${id}-title`} value={values.title} onChange={(e) => set("title", e.target.value)} placeholder="The Waves" autoFocus />
+        <Input id={`${id}-title`} value={values.title} onChange={(e) => set("title", e.target.value)} placeholder="The Waves" autoFocus={autoFocus} />
       </div>
 
       <div className="grid grid-cols-[1fr_7rem] gap-3">
@@ -317,7 +367,9 @@ export function BookForm({
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor={`${id}-gr`}>Goodreads</Label>
+                    <Label htmlFor={`${id}-gr`} title={`Public average from ${RATING_SOURCE_LABEL[values.ratingSource ?? "goodreads"]}`}>
+                      {values.ratingSource && values.ratingSource !== "goodreads" ? RATING_SOURCE_LABEL[values.ratingSource] : "Goodreads"}
+                    </Label>
                     <Input
                       id={`${id}-gr`}
                       inputMode="decimal"
@@ -327,6 +379,33 @@ export function BookForm({
                       className="tabular"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-[1fr_9rem] gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor={`${id}-isbn`}>ISBN</Label>
+                    <Input
+                      id={`${id}-isbn`}
+                      value={values.isbn}
+                      onChange={(e) => set("isbn", e.target.value.replace(/[^\dXx-]/g, ""))}
+                      className="tabular"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor={`${id}-lang`}>Language</Label>
+                    <Input id={`${id}-lang`} value={values.language} onChange={(e) => set("language", e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${id}-desc`}>Description</Label>
+                  <Textarea
+                    id={`${id}-desc`}
+                    dir="auto"
+                    rows={5}
+                    value={values.description}
+                    onChange={(e) => set("description", e.target.value)}
+                    placeholder="The publisher's description"
+                    className="font-serif text-[15px]"
+                  />
                 </div>
               </div>
             </motion.div>

@@ -8,7 +8,7 @@ import { ArrowLeft, ExternalLink, Highlighter, ImageIcon, NotebookPen, Pencil, T
 import { toast } from "sonner";
 import type { ReadingStatus } from "@/types/reading";
 import { useLibrary } from "@/lib/library-context";
-import { FORMAT_LABEL, STATUS_LABEL, STATUSES } from "@/lib/labels";
+import { FORMAT_LABEL, RATING_SOURCE_LABEL, STATUS_LABEL, STATUSES } from "@/lib/labels";
 import { daysBetween, formatDate } from "@/lib/dates";
 import { easeOut } from "@/lib/motion";
 import { statusPatch } from "@/lib/status";
@@ -22,6 +22,7 @@ import { AmbientGlow } from "@/components/book/ambient-glow";
 import { BookCover } from "@/components/book/book-cover";
 import { ProgressControl } from "@/components/book/progress-control";
 import { RatingInput, RatingStars } from "@/components/book/rating";
+import { AboutBook } from "./about-book";
 import { EditBookDialog } from "./edit-book-dialog";
 import { HighlightsPanel } from "./highlights-panel";
 import { QuoteStudio } from "./quote-studio";
@@ -176,14 +177,17 @@ export function BookVault({ id }: { id: string }) {
               </div>
             </div>
             <div className="border-t border-border pt-3">
-              <p className="label-meta">Goodreads average</p>
-              <div className="mt-2 flex h-5 items-center gap-2.5">
+              <p className="label-meta">{RATING_SOURCE_LABEL[book.ratingSource ?? "goodreads"]} average</p>
+              <div className="mt-2 flex min-h-5 flex-wrap items-center gap-x-2.5 gap-y-1">
                 {book.goodreadsRating === null ? (
                   <span className="text-muted-foreground">—</span>
                 ) : (
                   <>
                     <RatingStars value={Math.round(book.goodreadsRating * 2) / 2} size="size-4" />
-                    <span className="tabular font-display text-xs text-muted-foreground">{book.goodreadsRating.toFixed(2)}</span>
+                    <span className="tabular font-display text-xs text-muted-foreground">
+                      {book.goodreadsRating.toFixed(2)}
+                      {book.ratingsCount ? ` · ${book.ratingsCount.toLocaleString("en")} ratings` : ""}
+                    </span>
                   </>
                 )}
               </div>
@@ -201,12 +205,14 @@ export function BookVault({ id }: { id: string }) {
             <Fact label="Read in">{readingDays ? `${readingDays} ${readingDays === 1 ? "day" : "days"}` : "—"}</Fact>
             {book.language && (
               <div className="col-span-2 lg:col-span-3">
-                <Fact label="Edition">{book.language}</Fact>
+                <Fact label="Language">{book.language}</Fact>
               </div>
             )}
           </dl>
         </motion.div>
       </header>
+
+      {book.description && <AboutBook key={book.id} text={book.description} />}
 
       <div className="border-b border-border">
         <Tabs

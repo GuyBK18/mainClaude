@@ -1,0 +1,23 @@
+{
+ "head": {
+  "vars": [
+   "seriesLabel",
+   "ordinal"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "seriesLabel": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Hainish Cycle"
+    },
+    "ordinal": {
+     "type": "literal",
+     "value": "6"
+    }
+   }
+  ]
+ }
+}
