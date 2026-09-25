@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDown, ArrowDownUp, ArrowUp, Box, LayoutGrid, Library, ListPlus, Plus, Rows3 } from "lucide-react";
 import type { ReadingStatus } from "@/types/reading";
@@ -18,6 +18,7 @@ import {
   type SortKey,
 } from "@/lib/library-filter";
 import { easeOut, type Direction } from "@/lib/motion";
+import { useStoredValue } from "@/lib/use-stored-value";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs } from "@/components/ui/tabs";
@@ -35,60 +36,31 @@ const STATUS_ORDER: (ReadingStatus | "all")[] = ["all", "reading", "tbr", "compl
 const VIEW_KEY = "luminaread:library-view";
 const SORT_KEY = "luminaread:library-sort";
 
-function readView(): View {
-  try {
-    const v = window.localStorage.getItem(VIEW_KEY);
-    if (v === "grid" || v === "shelf" || v === "leaning" || v === "table") return v;
-  } catch {
-    // Storage blocked; fall back to the grid.
-  }
-  return "grid";
-}
+// The view is stored as its bare name, as earlier versions did.
+const STORED_VIEW = {
+  parse: (raw: string): View | undefined => (raw === "grid" || raw === "shelf" || raw === "leaning" || raw === "table" ? raw : undefined),
+  serialize: (view: View) => view,
+};
 
 type Sort = { key: SortKey; dir: SortDir };
 const DEFAULT_SORT: Sort = { key: "added", dir: "desc" };
 
-function readSort(): Sort {
-  try {
-    const saved = JSON.parse(window.localStorage.getItem(SORT_KEY) ?? "null") as Partial<Sort> | null;
-    if (saved?.key && saved.key in SORT_LABEL && (saved.dir === "asc" || saved.dir === "desc")) return saved as Sort;
-  } catch {
-    // Storage blocked or unreadable; fall back to newest first.
-  }
-  return DEFAULT_SORT;
-}
-
-function saveSort(sort: Sort) {
-  try {
-    window.localStorage.setItem(SORT_KEY, JSON.stringify(sort));
-  } catch {
-    // Not persisted; the sort still applies.
-  }
-}
+const STORED_SORT = {
+  parse: (raw: string): Sort | undefined => {
+    const saved = JSON.parse(raw) as Partial<Sort> | null;
+    return saved?.key && saved.key in SORT_LABEL && (saved.dir === "asc" || saved.dir === "desc") ? (saved as Sort) : undefined;
+  },
+};
 
 export function LibraryView() {
   const { data } = useLibrary();
   const { setQuickAddOpen, setBulkAddOpen } = useUI();
-  const [view, setView] = useState<View>("grid");
+  const [view, changeView] = useStoredValue<View>(VIEW_KEY, "grid", STORED_VIEW);
   const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS);
-  const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
+  const [sort, setSort] = useStoredValue<Sort>(SORT_KEY, DEFAULT_SORT, STORED_SORT);
   // Books slide toward the side of the status tab picked; other filters change the list in place.
   const [direction, setDirection] = useState<Direction>(0);
   const [leaning, setLeaning] = useLeaningSettings();
-
-  useEffect(() => {
-    setView(readView());
-    setSort(readSort());
-  }, []);
-
-  const changeView = (next: View) => {
-    setView(next);
-    try {
-      window.localStorage.setItem(VIEW_KEY, next);
-    } catch {
-      // Not persisted; the view still switches.
-    }
-  };
 
   const changeStatus = (status: ReadingStatus | "all") => {
     setDirection(Math.sign(STATUS_ORDER.indexOf(status) - STATUS_ORDER.indexOf(filters.status)) as Direction);
@@ -101,11 +73,7 @@ export function LibraryView() {
   };
 
   const onSort = (key: SortKey) =>
-    setSort((s) => {
-      const next: Sort = s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: SORT_DEFAULT_DIR[key] };
-      saveSort(next);
-      return next;
-    });
+    setSort(sort.key === key ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: SORT_DEFAULT_DIR[key] });
 
   const books = useMemo(() => data?.books ?? [], [data]);
   const visible = useMemo(() => sortBooks(filterBooks(books, filters), sort.key, sort.dir), [books, filters, sort]);

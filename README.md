@@ -9,13 +9,13 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-Other scripts: `npm run build`, `npm run lint`, `npm run typecheck`, `npm test`.
+Needs Node.js 20.9 or later. Other scripts: `npm run build`, `npm run lint`, `npm run typecheck`, `npm test`. Only one `npm run dev` runs per project: a second one stops and names the running server and the command to stop it.
 
 The library starts empty. It is saved in the browser's LocalStorage under `luminaread:library:v1`. Earlier versions filled a new library with 31 sample books. On the first load after the update, those sample books are removed once, with their highlights, reading sessions and sample goal. Books you added stay. If the stored library ever cannot be read, the app starts empty and keeps the unreadable text under `luminaread:library:v1:unreadable`.
 
 ## Stack
 
-Next.js 15 (App Router), TypeScript in strict mode, Tailwind CSS v4, shadcn/ui-style components on Radix primitives, Framer Motion, Lucide icons, Recharts, Tiptap for the review and summary editor, cmdk for the command palette, Sonner for toasts.
+Next.js 16 (App Router, Turbopack), React 19.3, TypeScript in strict mode, Tailwind CSS v4, shadcn/ui-style components on Radix primitives, Framer Motion, Lucide icons, Recharts, Tiptap for the review and summary editor, cmdk for the command palette, Sonner for toasts.
 
 The shadcn registry could not be reached while building, so the components in `components/ui` were written by hand in shadcn's structure and restyled to the design system. `components.json` is in place, so `npx shadcn add <component>` works from now on.
 

@@ -22,32 +22,43 @@ const stamp = new Intl.DateTimeFormat("en", { day: "numeric", month: "long", hou
 
 /** Where the backup lives, when it last saved, and the daily copies to go back to. */
 export function BackupDialog() {
-  const { data, backup, restoreCopy } = useLibrary();
   const { backupOpen, setBackupOpen } = useUI();
+  return (
+    <Dialog open={backupOpen} onOpenChange={setBackupOpen}>
+      <DialogContent>
+        <BackupPanel onDone={() => setBackupOpen(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Mounts each time the dialog opens, so the list is fetched fresh and nothing is left from last time. */
+function BackupPanel({ onDone }: { onDone: () => void }) {
+  const { data, backup, restoreCopy } = useLibrary();
   const [copies, setCopies] = useState<Copy[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Copy | null>(null);
   const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
-    if (!backupOpen) return;
-    setCopies(null);
-    setError(null);
-    setConfirming(null);
+    let live = true;
     fetch("/api/library/copies", { cache: "no-store" })
       .then(async (res) => {
         const body = (await res.json()) as { copies?: Copy[]; error?: string };
         if (!res.ok) throw new Error(body.error ?? "Could not list the copies.");
-        setCopies(body.copies ?? []);
+        if (live) setCopies(body.copies ?? []);
       })
-      .catch((e: Error) => setError(e.message));
-  }, [backupOpen]);
+      .catch((e: Error) => live && setError(e.message));
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const restore = async (copy: Copy) => {
     setRestoring(true);
     try {
       await restoreCopy(copy.id);
-      setBackupOpen(false);
+      onDone();
       toast(`Restored the copy from ${formatDate(copy.date)}`, { description: "The library it replaced is kept as a copy." });
     } catch (e) {
       setError((e as Error).message);
@@ -66,62 +77,60 @@ export function BackupDialog() {
   }
 
   return (
-    <Dialog open={backupOpen} onOpenChange={setBackupOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Backup</DialogTitle>
-          <DialogDescription>{status}</DialogDescription>
-        </DialogHeader>
+    <>
+      <DialogHeader>
+        <DialogTitle>Backup</DialogTitle>
+        <DialogDescription>{status}</DialogDescription>
+      </DialogHeader>
 
-        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
-          <p className="label-meta mb-3">Daily copies</p>
-          {error ? (
-            <p role="alert" className="text-sm">
-              {error}
-            </p>
-          ) : !copies ? (
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-          ) : copies.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No copies yet. The first one is made with your next change.</p>
-          ) : (
-            <ul className="divide-y divide-border">
-              {copies.map((copy) => (
-                <li key={copy.id} className="flex items-center justify-between gap-4 py-2.5">
-                  <div className="min-w-0">
-                    <p className="text-sm">
-                      {formatDate(copy.date)}
-                      {copy.beforeRestore && <span className="text-muted-foreground"> · before a restore</span>}
-                    </p>
-                    <p className="tabular text-xs text-muted-foreground">
-                      {copy.books} {copy.books === 1 ? "book" : "books"}
-                      {copy.updatedAt && ` · last change ${time.format(new Date(copy.updatedAt))}`}
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setConfirming(copy)} disabled={backup.state !== "saved"}>
-                    Restore
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {confirming && (
-          <DialogFooter className="sm:items-center">
-            <p className="mr-auto text-sm">
-              Replace your {data?.books.length ?? 0} books with the {confirming.books} from {formatDate(confirming.date)}? The current
-              library is kept as a copy.
-            </p>
-            <Button variant="ghost" onClick={() => setConfirming(null)} disabled={restoring}>
-              Cancel
-            </Button>
-            <Button onClick={() => void restore(confirming)} disabled={restoring}>
-              {restoring && <Loader2 className="animate-spin" />}
-              Restore
-            </Button>
-          </DialogFooter>
+      <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+        <p className="label-meta mb-3">Daily copies</p>
+        {error ? (
+          <p role="alert" className="text-sm">
+            {error}
+          </p>
+        ) : !copies ? (
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
+        ) : copies.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No copies yet. The first one is made with your next change.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {copies.map((copy) => (
+              <li key={copy.id} className="flex items-center justify-between gap-4 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm">
+                    {formatDate(copy.date)}
+                    {copy.beforeRestore && <span className="text-muted-foreground"> · before a restore</span>}
+                  </p>
+                  <p className="tabular text-xs text-muted-foreground">
+                    {copy.books} {copy.books === 1 ? "book" : "books"}
+                    {copy.updatedAt && ` · last change ${time.format(new Date(copy.updatedAt))}`}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setConfirming(copy)} disabled={backup.state !== "saved"}>
+                  Restore
+                </Button>
+              </li>
+            ))}
+          </ul>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      {confirming && (
+        <DialogFooter className="sm:items-center">
+          <p className="mr-auto text-sm">
+            Replace your {data?.books.length ?? 0} books with the {confirming.books} from {formatDate(confirming.date)}? The current
+            library is kept as a copy.
+          </p>
+          <Button variant="ghost" onClick={() => setConfirming(null)} disabled={restoring}>
+            Cancel
+          </Button>
+          <Button onClick={() => void restore(confirming)} disabled={restoring}>
+            {restoring && <Loader2 className="animate-spin" />}
+            Restore
+          </Button>
+        </DialogFooter>
+      )}
+    </>
   );
 }

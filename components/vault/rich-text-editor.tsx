@@ -71,7 +71,9 @@ export function RichTextEditor({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const last = useRef(initialValue);
   const saveRef = useRef(onSave);
-  saveRef.current = onSave;
+  useEffect(() => {
+    saveRef.current = onSave;
+  }, [onSave]);
 
   const flush = async (html: string) => {
     if (timer.current) clearTimeout(timer.current);

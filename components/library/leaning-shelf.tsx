@@ -159,16 +159,19 @@ function Shelves({ books, settings, width }: { books: Book[]; settings: LeaningS
 
 function LeaningBook({ book, slab, ref }: { book: Book; slab: Slab; ref: (el: HTMLDivElement | null) => void }) {
   const { w: W, h: H, t: T } = slab;
-  // Books with a cover image take their spine color from the image's left edge.
-  const [palette, setPalette] = useState(book.cover.palette);
+  // Books with a cover image take their spine color from the image's left edge. Until it is read,
+  // and for books without an image, the cover's own palette is used.
+  const [read, setRead] = useState<{ url: string; palette: [string, string, string] } | null>(null);
   useEffect(() => {
+    const url = book.cover.url;
+    if (!url) return;
     let live = true;
-    setPalette(book.cover.palette);
-    if (book.cover.url) void spinePalette(book.cover.url).then((p) => live && p && setPalette(p));
+    void spinePalette(url).then((p) => live && p && setRead({ url, palette: p }));
     return () => {
       live = false;
     };
-  }, [book.cover.url, book.cover.palette]);
+  }, [book.cover.url]);
+  const palette = read && read.url === book.cover.url ? read.palette : book.cover.palette;
   const [ground, ink, accent] = palette;
   const face = "absolute left-1/2 top-1/2 [backface-visibility:hidden]";
 

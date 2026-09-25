@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId } from "react";
 import { RadioGroup } from "radix-ui";
 import { SlidersHorizontal } from "lucide-react";
 import {
@@ -11,35 +11,18 @@ import {
   type LeaningMode,
   type LeaningSettings,
 } from "@/lib/leaning-shelf";
+import { useStoredValue } from "@/lib/use-stored-value";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 
 const KEY = "luminaread:leaning-shelf";
 
+const STORED = { parse: (raw: string) => toLeaningSettings(JSON.parse(raw)) };
+
 /** The reader's leaning shelf settings, kept in this browser. */
 export function useLeaningSettings() {
-  const [settings, setSettings] = useState<LeaningSettings>(DEFAULT_LEANING);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(KEY);
-      if (raw) setSettings(toLeaningSettings(JSON.parse(raw)));
-    } catch {
-      // Unreadable or blocked storage: keep the defaults.
-    }
-  }, []);
-
-  const update = (next: LeaningSettings) => {
-    setSettings(next);
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-      // Not persisted; the shelf still changes.
-    }
-  };
-
-  return [settings, update] as const;
+  return useStoredValue<LeaningSettings>(KEY, DEFAULT_LEANING, STORED);
 }
 
 const MODES: { value: LeaningMode; label: string }[] = [
