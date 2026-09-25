@@ -1,0 +1,188 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowDown, ArrowDownUp, ArrowUp, Box, LayoutGrid, Plus, Rows3 } from "lucide-react";
+import type { ReadingStatus } from "@/types/reading";
+import { useLibrary } from "@/lib/library-context";
+import { useUI } from "@/lib/ui-context";
+import { STATUS_LABEL } from "@/lib/labels";
+import {
+  DEFAULT_FILTERS,
+  SORT_DEFAULT_DIR,
+  SORT_LABEL,
+  filterBooks,
+  sortBooks,
+  type LibraryFilters,
+  type SortDir,
+  type SortKey,
+} from "@/lib/library-filter";
+import { easeOut } from "@/lib/motion";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs } from "@/components/ui/tabs";
+import { LoadingBlock, PageHeader } from "@/components/shell/page-header";
+import { LibraryFilterBar } from "./library-filters";
+import { LibraryGrid } from "./library-grid";
+import { LibraryShelf } from "./library-shelf";
+import { LibraryTable } from "./library-table";
+
+type View = "grid" | "shelf" | "table";
+const VIEW_KEY = "luminaread:library-view";
+
+function readView(): View {
+  try {
+    const v = window.localStorage.getItem(VIEW_KEY);
+    if (v === "grid" || v === "shelf" || v === "table") return v;
+  } catch {
+    // Storage blocked; fall back to the grid.
+  }
+  return "grid";
+}
+
+export function LibraryView() {
+  const { data } = useLibrary();
+  const { setQuickAddOpen } = useUI();
+  const [view, setView] = useState<View>("grid");
+  const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS);
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "added", dir: "desc" });
+
+  useEffect(() => setView(readView()), []);
+
+  const changeView = (next: View) => {
+    setView(next);
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Not persisted; the view still switches.
+    }
+  };
+
+  const onSort = (key: SortKey) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: SORT_DEFAULT_DIR[key] }));
+
+  const books = useMemo(() => data?.books ?? [], [data]);
+  const visible = useMemo(() => sortBooks(filterBooks(books, filters), sort.key, sort.dir), [books, filters, sort]);
+
+  const counts = useMemo(() => {
+    const c: Record<ReadingStatus, number> = { reading: 0, tbr: 0, completed: 0, dnf: 0 };
+    for (const b of books) c[b.status]++;
+    return c;
+  }, [books]);
+
+  const statusTabs: { value: ReadingStatus | "all"; label: React.ReactNode }[] = [
+    { value: "all", label: <>All <span className="tabular text-muted-foreground">{books.length}</span></> },
+    ...(["reading", "tbr", "completed", "dnf"] as ReadingStatus[]).map((s) => ({
+      value: s,
+      label: (
+        <>
+          {STATUS_LABEL[s]} <span className="tabular text-muted-foreground">{counts[s]}</span>
+        </>
+      ),
+    })),
+  ];
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Library"
+        title={data ? `${books.length} books` : "Library"}
+        description={
+          data
+            ? `${counts.reading} in progress, ${counts.completed} finished, ${counts.tbr} waiting and ${counts.dnf} set aside.`
+            : undefined
+        }
+        actions={
+          <Button variant="outline" onClick={() => setQuickAddOpen(true)}>
+            <Plus /> Quick add
+          </Button>
+        }
+      />
+
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+        <Tabs
+          value={filters.status}
+          onValueChange={(status) => setFilters((f) => ({ ...f, status }))}
+          items={statusTabs}
+          layoutId="library-status"
+          aria-label="Reading status"
+          className="no-scrollbar -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0"
+        />
+        <div className="flex items-center gap-4">
+          <Popover>
+            <PopoverTrigger className="pressable flex h-9 items-center gap-1.5 font-display text-[13px] text-muted-foreground transition-colors hover:text-foreground data-[state=open]:text-foreground">
+              <ArrowDownUp className="size-3.5" />
+              {SORT_LABEL[sort.key]}
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-48">
+              {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onSort(key)}
+                  className="flex h-8 w-full items-center justify-between rounded-sm px-2 text-sm hover:bg-ink-6"
+                >
+                  <span className={sort.key === key ? "underline underline-offset-4" : undefined}>{SORT_LABEL[key]}</span>
+                  {sort.key === key &&
+                    (sort.dir === "asc" ? (
+                      <ArrowUp className="size-3.5 text-muted-foreground" aria-label="Ascending" />
+                    ) : (
+                      <ArrowDown className="size-3.5 text-muted-foreground" aria-label="Descending" />
+                    ))}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+          <Tabs
+            value={view}
+            onValueChange={changeView}
+            layoutId="library-view"
+            aria-label="View"
+            items={[
+              { value: "grid", label: "Grid", icon: <LayoutGrid /> },
+              { value: "shelf", label: "Shelf", icon: <Box /> },
+              { value: "table", label: "Table", icon: <Rows3 /> },
+            ]}
+          />
+        </div>
+      </div>
+
+      <LibraryFilterBar filters={filters} onChange={setFilters} resultCount={visible.length} />
+
+      <div className="mt-10">
+        {!data ? (
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 lg:grid-cols-6">
+            {Array.from({ length: 6 }, (_, i) => (
+              <LoadingBlock key={i} className="aspect-[2/3]" />
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="py-24 text-center">
+            <p className="font-serif text-2xl">No books match.</p>
+            <button
+              type="button"
+              onClick={() => setFilters(DEFAULT_FILTERS)}
+              className="mt-3 font-display text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              Clear all filters
+            </button>
+          </div>
+        ) : (
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={view}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: easeOut }}
+            >
+              {view === "grid" && <LibraryGrid books={visible} />}
+              {view === "shelf" && <LibraryShelf books={visible} />}
+              {view === "table" && <LibraryTable books={visible} sort={sort} onSort={onSort} />}
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </div>
+    </>
+  );
+}
