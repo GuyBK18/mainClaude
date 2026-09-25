@@ -102,7 +102,7 @@ export function BookVault({ id }: { id: string }) {
       <header className="relative isolate grid grid-cols-1 gap-12 pb-20 md:grid-cols-[minmax(220px,300px)_minmax(0,1fr)] lg:gap-20">
         {/* The cover floats over a large blur of itself. */}
         <div className="relative mx-auto w-52 sm:w-60 md:mx-0 md:w-full">
-          <div aria-hidden className="absolute inset-0 -z-10 scale-[1.35] opacity-[var(--glow-opacity)] blur-3xl saturate-150">
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 scale-[1.35] opacity-[var(--glow-opacity)] blur-3xl saturate-150">
             <BookCover book={book} className="size-full" />
           </div>
           <AmbientGlow palette={book.cover.palette} className="-inset-[60%]" intensity={0.8} />
