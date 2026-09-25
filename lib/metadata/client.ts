@@ -1,4 +1,4 @@
-import type { BookCandidate, LookupResponse, SearchResponse } from "./types";
+import type { BookCandidate, CoverQuery, LookupResponse, MoreCoversResponse, SearchResponse } from "./types";
 
 async function readJson<T>(res: Response): Promise<T> {
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
@@ -19,6 +19,16 @@ export async function fetchDetails(body: { candidate: BookCandidate } | { url: s
     signal,
   });
   return readJson<LookupResponse>(res);
+}
+
+export async function fetchMoreCovers(query: CoverQuery, page: number, known: string[], signal?: AbortSignal) {
+  const res = await fetch("/api/books/covers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, page, known }),
+    signal,
+  });
+  return readJson<MoreCoversResponse>(res);
 }
 
 /** Same-origin URL for a remote cover, so canvas can read its pixels. */

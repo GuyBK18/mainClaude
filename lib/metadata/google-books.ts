@@ -139,3 +139,16 @@ export async function googleFind(q: { isbn?: string; title: string; author?: str
   const hit = data.items?.find((v) => v.volumeInfo.title && normalizeTitle(v.volumeInfo.title) === want);
   return hit ? googleVolume(hit.id).catch(() => toDetails(hit)) : null;
 }
+
+/** Covers of other volumes of the same book in `lang`, a page of results at a time. */
+export async function googleCovers(q: { title: string; author?: string; lang: EditionLanguage; page: number }): Promise<string[]> {
+  const terms = [`intitle:${q.title}`, q.author ? `inauthor:${surname(q.author)}` : ""].filter(Boolean).join(" ");
+  const data = await getJSON<VolumesResponse>(
+    url("/volumes", { q: terms, maxResults: "20", startIndex: String((q.page - 1) * 20), printType: "books", langRestrict: q.lang }),
+  );
+  const want = normalizeTitle(q.title);
+  return (data.items ?? [])
+    .filter((v) => v.volumeInfo.title && normalizeTitle(v.volumeInfo.title) === want)
+    .map((v) => coverOf(v.volumeInfo))
+    .filter((u): u is string => Boolean(u));
+}

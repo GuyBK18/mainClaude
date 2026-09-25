@@ -173,6 +173,7 @@ describe("details", () => {
       catalogRoutes.googleVolume,
       catalogRoutes.olWork,
       [/goodreads\.com\/book\/show\/50202953/, html("goodreads-book-full.html", `${GR}/book/show/50202953-piranesi`)],
+      [/goodreads\.com\/work\/editions\/1116815/, html("goodreads-editions.html")],
     ]);
     const d = await getBookDetails(candidate);
 
@@ -181,13 +182,25 @@ describe("details", () => {
     expect(d.description).toMatch(/^From the New York Times bestselling author/);
     expect(d.pageCount).toBe(387);
     expect(d.publishedYear).toBe(2020);
-    expect(d.genres[0]).toBe("Science Fiction");
+    expect(d.genres).toEqual(expect.arrayContaining(["Science Fiction", "Fantasy"]));
     expect(d.language).toBe("English");
-    // Two covers found online, best first; the typeset one is made in the browser.
-    expect(d.covers).toEqual([
-      { url: GR_COVER, source: "goodreads" },
-      { url: OL_EDITION_COVER, source: "openlibrary" },
+    // The page's cover, then other English print and ebook editions (the page's own edition
+    // listed again is dropped), then the other catalogs. The browser drops look-alikes.
+    expect(d.covers.map((c) => [c.source, c.url.split("/").pop(), c.format])).toEqual([
+      ["goodreads", "13651.jpg", undefined],
+      ["goodreads", "7700.jpg", "Mass Market Paperback"],
+      ["goodreads", "7704.jpg", "Kindle Edition"],
+      ["openlibrary", "10523448-L.jpg", undefined],
+      ["googlebooks", GOOGLE_COVER.split("/").pop(), undefined],
+      ["openlibrary", "10523447-L.jpg", undefined],
     ]);
+    expect(d.coverQuery).toEqual({
+      title: "Piranesi",
+      author: "Susanna Clarke",
+      lang: "en",
+      goodreadsWorkId: "1116815",
+      openLibraryWork: "/works/OL20812346W",
+    });
     expect(d.coverUrl).toBe(GR_COVER);
     expect(d.lang).toBe("en");
     expect(d.sourceUrl).toBe(`${GR}/book/show/50202953-piranesi`);
@@ -215,10 +228,7 @@ describe("details", () => {
     expect(d.rating).toEqual({ value: 4.12, count: 122, source: "openlibrary" });
     expect(d.series).toEqual({ name: "Hainish Cycle", position: 6 });
     expect(d.provenance.series).toBe("wikidata");
-    expect(d.covers).toEqual([
-      { url: OL_EDITION_COVER, source: "openlibrary" },
-      { url: GOOGLE_COVER, source: "googlebooks" },
-    ]);
+    expect(d.covers.map((c) => c.url)).toEqual([OL_EDITION_COVER, GOOGLE_COVER, "https://covers.openlibrary.org/b/id/10523447-L.jpg"]);
     expect(d.notes).toEqual([
       "Goodreads returned 403.",
       "No Goodreads rating came back, so the rating is the Open Library average.",
@@ -271,7 +281,7 @@ describe("details in the wanted language", () => {
     expect(d.description).toMatch(/^From the New York Times bestselling author/);
     expect(d.publisher).toBe("Bloomsbury Publishing USA");
     expect(d.isbn).toBe("9781635575637");
-    expect(d.covers.map((c) => c.url)).toEqual([GR_COVER, GOOGLE_COVER]);
+    expect(d.covers.map((c) => c.url)).toEqual([GR_COVER, GOOGLE_COVER, "https://covers.openlibrary.org/b/id/10523447-L.jpg"]);
     expect(d.covers.some((c) => c.url.includes("PLVOL1"))).toBe(false);
     const titleSearch = new URL(calls.find((u) => u.includes("q=intitle"))!);
     expect(titleSearch.searchParams.get("langRestrict")).toBe("en");
@@ -362,7 +372,7 @@ describe("URL import", () => {
     expect(d.pageCount).toBe(387);
     expect(d.genres[0]).toBe("Science Fiction");
     expect(d.provenance).toMatchObject({ description: "goodreads", publisher: "goodreads", publishedYear: "goodreads", genres: "goodreads", coverUrl: "goodreads" });
-    // Google still offers the second cover.
+    // Google still offers another cover.
     expect(d.covers.map((c) => c.source)).toEqual(["goodreads", "googlebooks"]);
   });
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { clearCache } from "../http";
-import { goodreadsLookup, parseGoodreadsBook, parseGoodreadsSearch } from "../goodreads";
+import { goodreadsEditionCovers, goodreadsLookup, parseGoodreadsBook, parseGoodreadsEditions, parseGoodreadsSearch } from "../goodreads";
 import { fakeFetch, fixture, html } from "./fake-fetch";
 
 const GR = "https://www.goodreads.com";
@@ -45,6 +45,41 @@ describe("Goodreads book page", () => {
     expect(d.description).toBe("A groundbreaking work of science fiction.\n\nGenly Ai is sent to Winter & its people.");
     // The size token is stripped so the full cover loads.
     expect(d.coverUrl).toBe("https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1488213612i/18423.jpg");
+  });
+});
+
+describe("Goodreads editions page", () => {
+  it("reads each edition's cover, format and language", () => {
+    const eds = parseGoodreadsEditions(fixture("goodreads-editions.html"), GR);
+    expect(eds).toHaveLength(6);
+    expect(eds[0]).toEqual({
+      url: `${GR}/book/show/13651`,
+      coverUrl: "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1353467455i/13651.jpg",
+      language: "en",
+      format: "Paperback",
+      audio: false,
+    });
+    expect(eds[1].format).toBe("Mass Market Paperback");
+    expect(eds[2].language).toBe("pl");
+    expect(eds[3]).toMatchObject({ format: "Audio CD", audio: true });
+    // Goodreads' placeholder image is not a cover.
+    expect(eds[4].coverUrl).toBeUndefined();
+    expect(eds[5].format).toBe("Kindle Edition");
+  });
+
+  it("keeps print and ebook editions in the wanted language that have a cover", async () => {
+    const calls = fakeFetch([[/\/work\/editions\/1116815/, html("goodreads-editions.html")]]);
+    const eds = await goodreadsEditionCovers("1116815", "en", 2);
+    expect(eds.map((e) => e.url)).toEqual([`${GR}/book/show/13651`, `${GR}/book/show/7700`, `${GR}/book/show/7704`]);
+    expect(new URL(calls[0]).searchParams.get("page")).toBe("2");
+  });
+
+  it("finds the work id on the book page", () => {
+    expect(parseGoodreadsBook(fixture("goodreads-book-full.html"), `${GR}/book/show/13651.The_Dispossessed`).workId).toBe("1116815");
+  });
+
+  it("returns nothing when the page is laid out differently", () => {
+    expect(parseGoodreadsEditions("<html><body><main>New layout</main></body></html>", GR)).toEqual([]);
   });
 });
 

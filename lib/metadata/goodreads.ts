@@ -94,8 +94,13 @@ function fromApollo(state: Json, pageUrl: string): PartialDetails {
   };
   const legacyId = pageUrl.match(/\/book\/show\/(\d+)/)?.[1];
   const books = Object.values(state).filter((v): v is Json => !!v && typeof v === "object" && (v as Json).__typename === "Book");
+  // Related books (the series, "readers also enjoyed") share the state. The page's own book
+  // matches the address; failing that, it is the one with full details and a work.
   const book =
-    books.find((b) => legacyId && String(b.legacyId) === legacyId) ?? books.find((b) => b.bookSeries || b.bookGenres) ?? books[0];
+    books.find((b) => legacyId && String(b.legacyId) === legacyId) ??
+    books.find((b) => b.details && b.work) ??
+    books.find((b) => b.bookSeries || b.bookGenres) ??
+    books[0];
   if (!book) return {};
 
   // Apollo keys fields called with arguments as `description({"stripped":true})`; the plain key keeps line breaks.
@@ -130,6 +135,7 @@ function fromApollo(state: Json, pageUrl: string): PartialDetails {
     series: seriesName && position ? { name: seriesName, position } : undefined,
     rating: averageRating && ratingsCount ? { value: averageRating, count: ratingsCount, source: "goodreads" } : undefined,
     coverUrl: typeof book.imageUrl === "string" ? book.imageUrl : undefined,
+    workId: work?.legacyId !== undefined ? String(work.legacyId) : undefined,
   };
 }
 
@@ -171,6 +177,7 @@ function fromHtml(html: string): PartialDetails {
     series: series ? { name: decodeEntities(series[1].trim()), position: Number(series[2]) } : undefined,
     rating: rating && count ? { value: rating, count, source: "goodreads" } : undefined,
     coverUrl: cover,
+    workId: html.match(/\/work\/editions\/(\d+)/)?.[1],
   };
 }
 
@@ -197,6 +204,54 @@ export function parseGoodreadsBook(html: string, pageUrl: string): PartialDetail
   merged.coverUrl = fullSizeCover(merged.coverUrl);
   merged.url = absolute(pageUrl, pageUrl);
   return merged;
+}
+
+export interface GoodreadsEdition {
+  url: string;
+  coverUrl?: string;
+  /** ISO 639-1 code, or "other". */
+  language?: string;
+  format?: string;
+  audio: boolean;
+}
+
+const FORMATS = /^(Paperback|Hardcover|Kindle Edition|ebook|Mass Market Paperback|Trade Paperback|Library Binding|Nook|Audiobook|Audio CD|Audible Audio|MP3 CD|Board book|Spiral-bound|Leather Bound|Unknown Binding)$/i;
+const AUDIO = /audio|audible|mp3|cassette|\(Narrator\)/i;
+
+/**
+ * Reads the page that lists every edition of a book (/work/editions/…). Each edition sits
+ * in its own block with a cover, a format line such as "Kindle Edition, 466 pages" and an
+ * "Edition language" row. Blocks that cannot be read are skipped.
+ */
+export function parseGoodreadsEditions(html: string, base = endpoints.goodreads): GoodreadsEdition[] {
+  const blocks = html.split(/<div[^>]*class="elementList[^"]*"[^>]*>/i).slice(1);
+  const editions: GoodreadsEdition[] = [];
+  for (const block of blocks) {
+    const href = block.match(/href="([^"]*\/book\/show\/\d+[^"]*)"/i)?.[1];
+    if (!href) continue;
+    const text = stripTags(block);
+    const language = text.match(/Edition language:\s*(.+?)(?:\s+(?:Average rating|Rating|ISBN|ASIN|Published|Author)\b|$)/i)?.[1];
+    const rows = [...block.matchAll(/>\s*([^<>]+?)\s*</g)].map((m) => decodeEntities(m[1]));
+    const format =
+      rows.map((r) => r.match(/^(.+?),\s*[\d,]+\s*pages$/i)?.[1]).find(Boolean) ?? rows.find((r) => FORMATS.test(r));
+    editions.push({
+      url: absolute(href, base),
+      coverUrl: realCover(fullSizeCover(block.match(/<img[^>]+src="([^"]+)"/i)?.[1])),
+      language: languageCode(language),
+      format,
+      audio: AUDIO.test(text),
+    });
+  }
+  return editions;
+}
+
+/** Print and ebook editions in the wanted language that have a cover of their own. */
+export async function goodreadsEditionCovers(workId: string, lang: EditionLanguage, page = 1): Promise<GoodreadsEdition[]> {
+  const { text } = await getText(`${endpoints.goodreads}/work/editions/${encodeURIComponent(workId)}?per_page=50&page=${page}`, {
+    browser: true,
+    timeoutMs: 8000,
+  });
+  return parseGoodreadsEditions(text).filter((e) => e.coverUrl && !e.audio && e.language === lang);
 }
 
 function looksLikeBookPage(url: string) {

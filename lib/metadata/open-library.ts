@@ -161,6 +161,10 @@ export async function openLibraryWork(workKey: string, doc?: SearchDoc): Promise
     categories: [...(work.subjects ?? []), ...(doc?.subject ?? [])],
     rating: doc ? ratingOf(doc) : undefined,
     coverUrl: coverUrl(work.covers?.find((c) => c > 0) ?? doc?.cover_i),
+    moreCovers: (work.covers ?? [])
+      .filter((c) => c > 0)
+      .slice(1, 6)
+      .map((c) => coverUrl(c)!),
     url: `${endpoints.openLibrary}${workKey}`,
   };
 }
@@ -170,4 +174,20 @@ export async function openLibraryByIsbn(isbn: string): Promise<{ details: Partia
   const [doc] = await search({ isbn, limit: "1" });
   if (!doc) return null;
   return { details: await openLibraryWork(doc.key, doc), doc };
+}
+
+interface EditionEntry {
+  covers?: number[];
+  languages?: { key: string }[];
+  physical_format?: string;
+}
+
+/** Covers of the work's editions in `lang`, fifty editions at a time. */
+export async function openLibraryEditionCovers(workKey: string, lang: EditionLanguage, page: number): Promise<{ url: string; format?: string }[]> {
+  const data = await getJSON<{ entries?: EditionEntry[] }>(
+    `${endpoints.openLibrary}${workKey}/editions.json?limit=50&offset=${(page - 1) * 50}`,
+  );
+  return (data.entries ?? [])
+    .filter((e) => e.languages?.some((l) => languageCode(l.key.split("/").pop()) === lang))
+    .flatMap((e) => (e.covers ?? []).filter((c) => c > 0).slice(0, 1).map((c) => ({ url: coverUrl(c)!, format: e.physical_format })));
 }

@@ -1,7 +1,6 @@
 import type {
   BookCandidate,
   BookDetails,
-  CoverOption,
   DetailField,
   EditionLanguage,
   LookupResponse,
@@ -13,7 +12,8 @@ import { SOURCE_LABEL } from "./types";
 import { describeFailure, goodreadsEnabled } from "./http";
 import { googleFind, googleVolume } from "./google-books";
 import { coverUrl as openLibraryCover, editionIn, openLibraryByIsbn, openLibraryWork } from "./open-library";
-import { goodreadsLookup, workOnly } from "./goodreads";
+import { goodreadsEditionCovers, goodreadsLookup, workOnly } from "./goodreads";
+import { collectCovers } from "./covers";
 import { wikidataSeries } from "./wikidata";
 import { mapGenres } from "./genres";
 import { searchCatalogs } from "./search";
@@ -23,7 +23,6 @@ type Offer<T> = [SourceId | undefined, T | undefined];
 
 // Google and Open Library ratings rest on few voters; below this they mislead more than they help.
 const MIN_FALLBACK_RATINGS = 5;
-const MAX_COVERS = 2;
 
 /** The candidate's own values came from whichever catalog found it first. */
 function candidateSource(c: BookCandidate, prefer: SourceId): SourceId | undefined {
@@ -61,9 +60,9 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
     return (await googleFind({ isbn: isbnHint, title: c.title, author, lang })) ?? volume;
   })();
   const olTask = c.refs.openLibraryWork
-    ? openLibraryWork(c.refs.openLibraryWork).then((details) => ({ details, cover: c.refs.openLibraryCover }))
+    ? openLibraryWork(c.refs.openLibraryWork).then((details) => ({ details, cover: c.refs.openLibraryCover, workKey: c.refs.openLibraryWork }))
     : isbnHint
-      ? openLibraryByIsbn(isbnHint).then((r) => r && { details: r.details, cover: editionIn(r.doc, lang)?.cover_i })
+      ? openLibraryByIsbn(isbnHint).then((r) => r && { details: r.details, cover: editionIn(r.doc, lang)?.cover_i, workKey: r.doc.key })
       : Promise.resolve(null);
   const grTask = goodreadsEnabled()
     ? goodreadsLookup({ url: c.refs.goodreadsUrl, ids: c.refs.goodreadsIds, isbn: isbnHint, title: c.title, author, lang })
@@ -89,6 +88,10 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
     notes.push(`Goodreads only had the ${other} edition, so its cover, pages and description were not used.`);
   }
 
+  // The editions list gives covers of other printings; it runs alongside the series lookup.
+  const editionsTask =
+    grAny?.workId && goodreadsEnabled() ? goodreadsEditionCovers(grAny.workId, lang).catch(() => []) : Promise.resolve([]);
+
   let series = gr?.series;
   let seriesSource: SourceId | undefined = series ? "goodreads" : undefined;
   if (!series) {
@@ -99,6 +102,7 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
       notes.push(`Wikidata ${describeFailure(error)}, so a series may be missing.`);
     }
   }
+  const editions = await editionsTask;
 
   const provenance: BookDetails["provenance"] = {};
   // A Goodreads page the reader pasted is their own pick: it wins every field it has, and
@@ -167,16 +171,13 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
 
   // Covers of editions in the wanted language, best image first. The work's own cover is
   // usually the original edition's, so it is a last resort and only for English.
-  const coverOffers: Offer<string>[] = [
-    ["goodreads", gr?.coverUrl],
-    ["openlibrary", openLibraryCover(olResult?.cover, "L")],
-    ["googlebooks", google?.coverUrl],
-  ];
-  if (lang === "en") coverOffers.push(["openlibrary", ol?.coverUrl]);
-  const covers: CoverOption[] = [];
-  for (const [source, url] of goodreadsFirst(coverOffers)) {
-    if (source && url && !covers.some((cv) => cv.url === url) && covers.length < MAX_COVERS) covers.push({ url, source });
-  }
+  const covers = collectCovers([
+    { source: "goodreads", url: gr?.coverUrl },
+    ...editions.map((e) => ({ source: "goodreads" as const, url: e.coverUrl, format: e.format })),
+    { source: "openlibrary", url: openLibraryCover(olResult?.cover, "L") },
+    { source: "googlebooks", url: google?.coverUrl },
+    ...(lang === "en" ? [ol?.coverUrl, ...(ol?.moreCovers ?? [])].map((url) => ({ source: "openlibrary" as const, url })) : []),
+  ]);
   if (covers[0]) provenance.coverUrl = covers[0].source;
   if (series && seriesSource) provenance.series = seriesSource;
 
@@ -210,6 +211,13 @@ export async function getBookDetails(c: BookCandidate): Promise<BookDetails> {
     coverUrl: covers[0]?.url,
     covers,
     lang,
+    coverQuery: {
+      title: c.title,
+      author: c.authors[0] ?? grAny?.authors?.[0] ?? "",
+      lang,
+      goodreadsWorkId: grAny?.workId,
+      openLibraryWork: c.refs.openLibraryWork ?? olResult?.workKey,
+    },
     // Link to the edition in the wanted language when there is one.
     sourceUrl: sameEdition(gr) ?? sameEdition(google) ?? grAny?.url ?? ol?.url ?? googleAny?.url,
     provenance,

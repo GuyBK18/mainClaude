@@ -73,6 +73,10 @@ export interface PartialDetails {
   rating?: PublicRating;
   coverUrl?: string;
   url?: string;
+  /** Goodreads work id, which leads to the page listing every edition. */
+  workId?: string;
+  /** More cover images for the same book, beyond `coverUrl`. */
+  moreCovers?: string[];
   /**
    * Set when the record is for an edition in another language. Only fields that hold for
    * every edition (rating, series, genres, first publication) are kept.
@@ -96,6 +100,23 @@ export type DetailField =
 export interface CoverOption {
   url: string;
   source: SourceId;
+  /** The edition's format when the catalog names it, e.g. "Hardcover". */
+  format?: string;
+}
+
+/** Identifies a book to the "more covers" route. */
+export interface CoverQuery {
+  title: string;
+  author: string;
+  lang: EditionLanguage;
+  goodreadsWorkId?: string;
+  openLibraryWork?: string;
+}
+
+export interface MoreCoversResponse {
+  covers: CoverOption[];
+  /** True when no catalog had anything more. */
+  done: boolean;
 }
 
 /** The merged record the add-book form is filled from. */
@@ -115,9 +136,14 @@ export interface BookDetails {
   rating?: PublicRating;
   /** The first of `covers`, or nothing when no catalog had an image. */
   coverUrl?: string;
-  /** Up to two covers of editions in the wanted language, best first. */
+  /**
+   * Covers of editions in the wanted language, best first. Different editions often share
+   * one image; the browser compares them and keeps the ones that look different.
+   */
   covers: CoverOption[];
   lang: EditionLanguage;
+  /** What the browser sends back to ask for more covers. */
+  coverQuery: CoverQuery;
   sourceUrl?: string;
   /** Which catalog each filled field came from. */
   provenance: Partial<Record<DetailField, SourceId>>;
