@@ -42,13 +42,28 @@ export interface Slab {
 
 const HEIGHT: Record<BookFormat, number> = { hardcover: 212, paperback: 192, ebook: 196, audiobook: 200 };
 
+/**
+ * Thickness grows with page count, one pixel per ten pages, so a book twice as long is
+ * twice as thick. Below MIN_PAGES a spine is too thin for its title, so those books share
+ * the thinnest spine. MAX_PAGES only stops a mistyped count from filling a whole row. A
+ * missing count gets a typical length, not the thinnest spine.
+ */
+export const MIN_PAGES = 160;
+export const MAX_PAGES = 1500;
+const TYPICAL_PAGES = 320;
+
+export function spinePages(pageCount: number) {
+  const pages = Number.isFinite(pageCount) && pageCount > 0 ? pageCount : TYPICAL_PAGES;
+  return Math.min(MAX_PAGES, Math.max(MIN_PAGES, pages));
+}
+
 /** Height follows format, thickness follows page count. Spines are the face you see most here, so they run thicker than on the upright shelf. */
 export function slabOf(book: Pick<Book, "format" | "pageCount">): Slab {
   const h = HEIGHT[book.format];
   return {
     w: Math.round(h * 0.655),
     h,
-    t: Math.round(Math.min(60, Math.max(16, book.pageCount / 10)) * (book.format === "hardcover" ? 1.08 : 1)),
+    t: Math.round((spinePages(book.pageCount) / 10) * (book.format === "hardcover" ? 1.08 : 1)),
   };
 }
 
@@ -131,16 +146,62 @@ export function layoutRows(slabs: Slab[], settings: LeaningSettings, width: numb
   });
   if (row.length) rows.push(row);
 
-  // Slide far enough to clear the next book before turning, with room to spare.
+  // Slide far enough to clear the next book before turning, with room to spare. A thick book
+  // swings its back corner behind it as it turns, so it slides further until its whole path
+  // stays clear of both neighbors.
   for (const r of rows) {
     r.forEach((placed, i) => {
       const slab = slabs[placed.index];
       const next = r[i + 1];
       const clear = next ? slab.w / 2 + slabs[next.index].w / 2 - (next.x - placed.x) * cos + CLEARANCE : 0;
       placed.d = Math.max(slab.w * 0.4, clear / smooth(0, SLIDE_END, TURN_START));
+      if (settings.mode !== "turn") return;
+      const neighbors = [r[i - 1], next].filter(Boolean).map((n) => boxAt(slabs[n.index], n, settings, 0));
+      const limit = placed.d + slab.w * 3;
+      while (placed.d < limit && turnHits(slab, placed, settings, neighbors)) placed.d += 2;
     });
   }
   return rows;
+}
+
+/** A book seen from above: its center, half its cover width and thickness, and its angle. */
+interface Box {
+  x: number;
+  z: number;
+  hw: number;
+  ht: number;
+  cos: number;
+  sin: number;
+}
+
+function boxAt(slab: Slab, placed: Placed, settings: LeaningSettings, p: number): Box {
+  const pose = poseAt(placed, settings, p);
+  const a = rad(pose.angle);
+  return { x: pose.x, z: pose.z, hw: slab.w / 2, ht: slab.t / 2, cos: Math.cos(a), sin: Math.sin(a) };
+}
+
+/** Whether two books come within `gap` pixels of each other (separating axis test). */
+function tooClose(a: Box, b: Box, gap: number) {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  // Each book's cover runs along (cos, -sin) and its thickness along (sin, cos).
+  for (const [lx, lz] of [[a.cos, -a.sin], [a.sin, a.cos], [b.cos, -b.sin], [b.sin, b.cos]]) {
+    const reach = (k: Box) => k.hw * Math.abs(k.cos * lx - k.sin * lz) + k.ht * Math.abs(k.sin * lx + k.cos * lz);
+    if (Math.abs(dx * lx + dz * lz) >= reach(a) + reach(b) + gap) return false;
+  }
+  return true;
+}
+
+/**
+ * Whether a book passes within a pixel of a resting neighbor while it turns. Before the
+ * turn it slides parallel to its neighbors, so it cannot touch them.
+ */
+function turnHits(slab: Slab, placed: Placed, settings: LeaningSettings, neighbors: Box[]) {
+  for (let p = TURN_START; p <= 1.0001; p += 0.01) {
+    const moving = boxAt(slab, placed, settings, p);
+    if (neighbors.some((n) => tooClose(moving, n, 1))) return true;
+  }
+  return false;
 }
 
 /** Where a book is at progress p (0 on the shelf, 1 fully out), seen from above: x along the shelf, z toward the reader. */

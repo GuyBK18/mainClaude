@@ -4,10 +4,13 @@ import {
   ANGLE_RANGE,
   DEFAULT_LEANING,
   layoutRows,
+  MAX_PAGES,
+  MIN_PAGES,
   poseAt,
   pullTarget,
   REVEAL_RANGE,
   slabOf,
+  spinePages,
   springStep,
   toLeaningSettings,
   TURN_START,
@@ -29,6 +32,9 @@ const SHAPES: Shape[] = [
   { format: "paperback", pageCount: 864 },
   { format: "paperback", pageCount: 240 },
   { format: "hardcover", pageCount: 757 },
+  { format: "paperback", pageCount: 1250 },
+  { format: "hardcover", pageCount: 1500 },
+  { format: "paperback", pageCount: 96 },
 ];
 const slabs = SHAPES.map(slabOf);
 
@@ -68,6 +74,41 @@ const settingsGrid = (): LeaningSettings[] => {
   return all;
 };
 
+describe("spine thickness", () => {
+  const t = (pageCount: number, format: Shape["format"] = "paperback") => slabOf({ format, pageCount }).t;
+
+  it("follows page count past 600 pages", () => {
+    // Red Rising Saga: Iron Gold, Light Bringer, Dark Age.
+    expect(t(600)).toBe(60);
+    expect(t(680)).toBe(68);
+    expect(t(757)).toBe(76);
+    expect(t(1200) / t(600)).toBe(2);
+  });
+
+  it("keeps a readable spine for short books and a bound for mistyped counts", () => {
+    expect(t(40)).toBe(t(MIN_PAGES));
+    expect(t(MIN_PAGES + 40)).toBeGreaterThan(t(MIN_PAGES));
+    expect(t(90000)).toBe(t(MAX_PAGES));
+  });
+
+  it("gives a book with no page count a typical spine", () => {
+    for (const bad of [0, -5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(spinePages(bad)).toBe(320);
+      expect(Number.isFinite(t(bad))).toBe(true);
+    }
+  });
+
+  it("fits the thickest book alone on a phone-width row at every angle", () => {
+    const thickest = slabOf({ format: "hardcover", pageCount: MAX_PAGES });
+    for (let angle = ANGLE_RANGE.min; angle <= ANGLE_RANGE.max; angle++) {
+      const settings = { ...DEFAULT_LEANING, angle };
+      const [row] = layoutRows([thickest], settings, 288, 40);
+      const a = (angle * Math.PI) / 180;
+      expect(row[0].x + (thickest.w * Math.cos(a) + thickest.t * Math.sin(a)) / 2).toBeLessThanOrEqual(288 - 12);
+    }
+  });
+});
+
 describe("leaning shelf", () => {
   it("defaults to turning, 62° and 14 px, and repairs stored settings", () => {
     expect(DEFAULT_LEANING).toEqual({ mode: "turn", angle: 62, reveal: 14 });
@@ -106,6 +147,27 @@ describe("leaning shelf", () => {
     }
     expect(hits.slice(0, 5)).toEqual([]);
     expect(checks).toBeGreaterThan(10000);
+  });
+
+  it("keeps books of any length apart while one turns out", () => {
+    // Forty books from 100 to 1500 pages in a scrambled order.
+    const mixed = Array.from({ length: 40 }, (_, i) =>
+      slabOf({ format: (["hardcover", "paperback", "ebook", "audiobook"] as const)[i % 4], pageCount: 100 + ((i * 373) % 1400) }),
+    );
+    const hits: string[] = [];
+    for (const settings of settingsGrid().filter((s) => s.reveal % 20 === 0)) {
+      const [row] = layoutRows(mixed, settings, 50000, 8);
+      const still = row.map((placed) => footprint(mixed[placed.index], placed, settings, 0));
+      for (let i = 0; i < row.length; i++) {
+        for (let p = 0; p <= 1.0001; p += 0.02) {
+          const moving = footprint(mixed[row[i].index], row[i], settings, p);
+          for (let j = Math.max(0, i - 2); j <= Math.min(row.length - 1, i + 2); j++) {
+            if (j !== i && overlaps(moving, still[j])) hits.push(`${settings.mode} ${settings.angle}° ${settings.reveal}px: book ${i} into ${j} at ${p.toFixed(2)}`);
+          }
+        }
+      }
+    }
+    expect(hits.slice(0, 5)).toEqual([]);
   });
 
   it("would catch a book that comes straight out toward the reader", () => {
