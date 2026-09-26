@@ -54,6 +54,11 @@ export function clearCache() {
   cache.clear();
 }
 
+/** Drops one address, so the next request fetches it again. */
+export function forget(url: string) {
+  cache.delete(url);
+}
+
 export class HttpError extends Error {
   constructor(
     public status: number,

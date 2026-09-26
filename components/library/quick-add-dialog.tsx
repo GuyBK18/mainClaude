@@ -30,7 +30,8 @@ export function QuickAddDialog() {
   const [values, setValues] = useState<BookFormValues>(emptyValues);
   const [details, setDetails] = useState<BookDetails | null>(null);
   const [url, setUrl] = useState("");
-  const [urlChoices, setUrlChoices] = useState<BookCandidate[] | null>(null);
+  // The note says why a Goodreads link came back as a title search.
+  const [urlChoices, setUrlChoices] = useState<{ candidates: BookCandidate[]; note?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +67,7 @@ export function QuickAddDialog() {
     try {
       const res = await fetchDetails({ url: url.trim() });
       if ("details" in res) applyDetails(res.details);
-      else if (res.candidates.length) setUrlChoices(res.candidates);
+      else if (res.candidates.length) setUrlChoices({ candidates: res.candidates, note: res.notes[0] });
       else setError("Nothing in the catalogs matches that link. Try the Search tab.");
     } catch (e) {
       setError((e as Error).message);
@@ -126,8 +127,12 @@ export function QuickAddDialog() {
   } else if (mode === "url" && urlChoices) {
     panel = (
       <>
-        <p className="mb-4 text-sm text-muted-foreground">That link names a title but not an edition. Pick the one you mean.</p>
-        <BookSearch onDetails={applyDetails} initialCandidates={urlChoices} />
+        <p className="mb-4 text-sm text-muted-foreground">
+          {urlChoices.note
+            ? `${urlChoices.note} These books match the title in the link. Pick the one you mean.`
+            : "That link names a title but not an edition. Pick the one you mean."}
+        </p>
+        <BookSearch onDetails={applyDetails} initialCandidates={urlChoices.candidates} />
       </>
     );
   } else if (mode === "url") {

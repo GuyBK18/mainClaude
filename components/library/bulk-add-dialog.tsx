@@ -132,13 +132,20 @@ export function BulkAddDialog() {
         try {
           const res = await fetchDetails({ url: list[index].url }, signal);
           if ("details" in res) settle(index, { phase: "ready", details: res.details });
-          else
+          else {
+            // A Goodreads page that could not be read comes back as a title search, with a note that says why.
+            const unread = list[index].goodreadsId ? res.notes[0] : undefined;
             settle(index, {
               phase: "failed",
-              message: res.candidates.length
-                ? "This link fits more than one book. Add it with Quick add and pick the right one."
-                : "No catalog knows this link.",
+              message: unread
+                ? `${unread} Try again in a minute.`
+                : res.candidates.length > 1
+                  ? "This link fits more than one book. Add it with Quick add and pick the right one."
+                  : res.candidates.length
+                    ? "This link does not name one book for sure. Add it with Quick add to check it."
+                    : "No catalog knows this link.",
             });
+          }
         } catch (error) {
           if (!signal.aborted) settle(index, { phase: "failed", message: (error as Error).message });
         }

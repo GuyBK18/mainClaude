@@ -1,14 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { clearCache } from "../http";
-import { goodreadsEditionCovers, goodreadsLookup, parseGoodreadsBook, parseGoodreadsEditions, parseGoodreadsSearch } from "../goodreads";
+import {
+  goodreadsEditionCovers,
+  goodreadsLookup,
+  parseGoodreadsBook,
+  parseGoodreadsEditions,
+  parseGoodreadsSearch,
+  readGoodreadsLink,
+} from "../goodreads";
 import { fakeFetch, fixture, html } from "./fake-fetch";
 
 const GR = "https://www.goodreads.com";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   clearCache();
 });
+
+/** A book page with nothing but its head, as in a layout the other readers do not know. */
+const headOnly = (title: string) =>
+  `<html><head><title>${title}</title><meta property="og:image" content="https://i.gr-assets.com/images/S/books/33257757i/33257757.jpg"></head><body></body></html>`;
 
 describe("Goodreads book page", () => {
   it("reads rating, series, genres and details from the page data", () => {
@@ -45,6 +57,83 @@ describe("Goodreads book page", () => {
     expect(d.description).toBe("A groundbreaking work of science fiction.\n\nGenly Ai is sent to Winter & its people.");
     // The size token is stripped so the full cover loads.
     expect(d.coverUrl).toBe("https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1488213612i/18423.jpg");
+  });
+});
+
+describe("Goodreads page title", () => {
+  it("reads the title, series and author when nothing else on the page can be read", () => {
+    const d = parseGoodreadsBook(headOnly("Iron Gold (Red Rising Saga, #4) by Pierce Brown | Goodreads"), `${GR}/book/show/33257757-iron-gold`);
+    expect(d.title).toBe("Iron Gold");
+    expect(d.authors).toEqual(["Pierce Brown"]);
+    expect(d.series).toEqual({ name: "Red Rising Saga", position: 4 });
+    expect(d.coverUrl).toBe("https://i.gr-assets.com/images/S/books/33257757i/33257757.jpg");
+  });
+
+  it("keeps ' by ' inside a title, and leaves out a series without a single number", () => {
+    const stand = parseGoodreadsBook(headOnly("Stand by Me by Jane Doe, John Roe | Goodreads"), `${GR}/book/show/1`);
+    expect(stand).toMatchObject({ title: "Stand by Me", authors: ["Jane Doe"] });
+    expect(stand.series).toBeUndefined();
+    const set = parseGoodreadsBook(headOnly("Red Rising Trilogy (Red Rising Saga, #1-3) by Pierce Brown | Goodreads"), `${GR}/book/show/2`);
+    expect(set.title).toBe("Red Rising Trilogy");
+    expect(set.series).toBeUndefined();
+  });
+
+  it("does not take a page that is not a book's", () => {
+    expect(parseGoodreadsBook(headOnly("Sign in | Goodreads"), `${GR}/book/show/1`).title).toBeUndefined();
+  });
+
+  it("gives way to the page data where both have a value", () => {
+    const page = fixture("goodreads-book-full.html").replace(/<title>[^<]*<\/title>/, "<title>Other (Other Series, #9) by Someone | Goodreads</title>");
+    const d = parseGoodreadsBook(page, `${GR}/book/show/13651.The_Dispossessed`);
+    expect(d.title).toBe("The Dispossessed");
+    expect(d.series).toEqual({ name: "Hainish Cycle", position: 6 });
+  });
+});
+
+describe("Goodreads link", () => {
+  const link = `${GR}/book/show/33257757-iron-gold`;
+  const empty = { body: "<html><head><title>Goodreads</title></head><body></body></html>", type: "text/html" };
+
+  /** Runs the read with the waits between tries skipped. */
+  async function read(url: string) {
+    vi.useFakeTimers();
+    const pending = readGoodreadsLink(url);
+    pending.catch(() => {});
+    await vi.runAllTimersAsync();
+    return pending;
+  }
+
+  it("tries again when Goodreads sends a page without the book, instead of keeping that page", async () => {
+    let n = 0;
+    const calls = fakeFetch([[/\/book\/show\/33257757/, () => (++n === 1 ? empty : html("goodreads-book-full.html", link))]]);
+    const res = await read(link);
+    expect("page" in res && res.page.title).toBe("The Dispossessed");
+    expect(calls).toHaveLength(2);
+  });
+
+  it("tries three times, then says what Goodreads sent", async () => {
+    const calls = fakeFetch([[/\/book\/show\//, empty]]);
+    expect(await read(link)).toEqual({ problem: 'Goodreads sent a page without the book in it ("Goodreads").' });
+    expect(calls).toHaveLength(3);
+
+    clearCache();
+    fakeFetch([[/\/book\/show\//, { body: "<html></html>", type: "text/html", finalUrl: `${GR}/user/sign_in` }]]);
+    expect(await read(link)).toEqual({ problem: "Goodreads sent /user/sign_in instead of the book page." });
+
+    clearCache();
+    fakeFetch([[/\/book\/show\//, { status: 404 }]]);
+    expect(await read(link)).toEqual({ problem: "Goodreads has no book page at this address." });
+  });
+
+  it("tries again after an error, and throws when every try fails", async () => {
+    let n = 0;
+    fakeFetch([[/\/book\/show\//, () => (++n === 1 ? { status: 503 } : html("goodreads-book-full.html", link))]]);
+    expect("page" in (await read(link))).toBe(true);
+
+    clearCache();
+    const calls = fakeFetch([[/\/book\/show\//, { status: 503 }]]);
+    await expect(read(link)).rejects.toThrow(/503/);
+    expect(calls).toHaveLength(3);
   });
 });
 

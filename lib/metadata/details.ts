@@ -9,10 +9,10 @@ import type {
   SourceId,
 } from "./types";
 import { SOURCE_LABEL } from "./types";
-import { describeFailure, goodreadsEnabled } from "./http";
+import { describeFailure, endpoints, goodreadsEnabled } from "./http";
 import { googleFind, googleVolume } from "./google-books";
 import { coverUrl as openLibraryCover, editionIn, openLibraryByIsbn, openLibraryWork } from "./open-library";
-import { goodreadsEditionCovers, goodreadsLookup, workOnly } from "./goodreads";
+import { goodreadsEditionCovers, goodreadsLookup, readGoodreadsLink, workOnly } from "./goodreads";
 import { collectCovers } from "./covers";
 import { wikidataSeries } from "./wikidata";
 import { mapGenres } from "./genres";
@@ -252,13 +252,23 @@ async function detailsOrChoices(query: string): Promise<LookupResponse> {
 /**
  * Resolves a pasted link. Goodreads book pages and links carrying an ISBN resolve to one
  * book; anything else is searched by the title in its address and returned as choices.
+ * A Goodreads page that cannot be read is searched by title too, with a note that says why.
  */
 export async function lookupUrl(raw: string): Promise<LookupResponse> {
   const url = new URL(raw.trim());
+  let problem: string | undefined;
 
   if (goodreadsEnabled() && /(^|\.)goodreads\.com$/.test(url.hostname) && /\/book\/show\//.test(url.pathname)) {
-    url.search = "";
-    const page = await goodreadsLookup({ url: url.toString(), title: "" });
+    // Read from Goodreads' own address, whichever form of it was pasted (goodreads.com, m.goodreads.com).
+    const pageUrl = `${endpoints.goodreads}${url.pathname}`;
+    let page: PartialDetails | undefined;
+    try {
+      const read = await readGoodreadsLink(pageUrl);
+      if ("page" in read) page = read.page;
+      else problem = read.problem;
+    } catch (error) {
+      problem = `Goodreads ${describeFailure(error)}.`;
+    }
     if (page?.title) {
       // The pasted page decides the language: Hebrew stays Hebrew, anything else is read in English.
       const lang: EditionLanguage = page.language === "he" ? "he" : "en";
@@ -268,18 +278,19 @@ export async function lookupUrl(raw: string): Promise<LookupResponse> {
           title: page.title,
           authors: page.authors ?? [],
           isbn: page.language === lang ? page.isbn : undefined,
-          refs: { goodreadsUrl: url.toString() },
+          refs: { goodreadsUrl: pageUrl },
           sources: ["goodreads"],
           lang,
         }),
       };
     }
+    problem ??= "Goodreads sent the book page without the book's title.";
   }
 
   const isbn = isbnInPath(url);
   if (isbn) return detailsOrChoices(isbn);
 
   const title = titleFromSlug(url);
-  if (!title) throw new Error("That link does not name a book.");
-  return { ...(await searchCatalogs(title)), notes: [] };
+  if (!title) throw new Error(problem ?? "That link does not name a book.");
+  return { ...(await searchCatalogs(title)), notes: problem ? [problem] : [] };
 }

@@ -5,7 +5,7 @@
  * changes its markup, whatever still parses is used and the rest is left empty.
  */
 import type { EditionLanguage, PartialDetails, PublicRating } from "./types";
-import { endpoints, getText, HttpError } from "./http";
+import { endpoints, forget, getText, HttpError } from "./http";
 import { decodeEntities, htmlToParagraphs, languageCode, normalizeTitle, stripTags, surname, toIsbn13, yearFrom } from "./text";
 
 type Json = Record<string, unknown>;
@@ -181,6 +181,28 @@ function fromHtml(html: string): PartialDetails {
   };
 }
 
+function pageTitle(html: string) {
+  return decodeEntities(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The page title, such as "Iron Gold (Red Rising Saga, #4) by Pierce Brown | Goodreads", names
+ * the book, its series and its author whatever the layout of the page, so it is the last resort.
+ */
+function fromHead(html: string): PartialDetails {
+  const named = pageTitle(html).match(/^(.+) by (.+?) \| Goodreads$/);
+  if (!named) return {};
+  const inSeries = named[1].match(/^(.+?)\s+\(([^()]+?),?\s+#([^()]+)\)$/);
+  const position = Number(inSeries?.[3]);
+  const image = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i)?.[1];
+  return {
+    title: (inSeries?.[1] ?? named[1]).trim(),
+    authors: [named[2].split(/,\s*/)[0]],
+    series: inSeries && position > 0 ? { name: inSeries[2].trim(), position } : undefined,
+    coverUrl: image ? decodeEntities(image) : undefined,
+  };
+}
+
 /** Reads a Goodreads book page. Earlier sources win per field; missing fields stay undefined. */
 export function parseGoodreadsBook(html: string, pageUrl: string): PartialDetails {
   const ld = jsonLdBook(html);
@@ -188,7 +210,7 @@ export function parseGoodreadsBook(html: string, pageUrl: string): PartialDetail
   const apollo = state ? fromApollo(state, pageUrl) : undefined;
   const declared = ld ? fromJsonLd(ld) : undefined;
   const visible = fromHtml(html);
-  const layers = [apollo, declared, visible].filter((l): l is PartialDetails => l !== undefined);
+  const layers = [apollo, declared, visible, fromHead(html)].filter((l): l is PartialDetails => l !== undefined);
 
   const merged: PartialDetails = {};
   for (const layer of layers) {
@@ -258,11 +280,58 @@ function looksLikeBookPage(url: string) {
   return /\/book\/show\//.test(url);
 }
 
+/** The book on a fetched page. A page without one leaves the cache, so asking again fetches it again. */
+function bookOn(url: string, text: string, finalUrl: string) {
+  const parsed = looksLikeBookPage(finalUrl) ? parseGoodreadsBook(text, finalUrl) : null;
+  if (parsed && (parsed.title || parsed.rating)) return parsed;
+  forget(url);
+  return null;
+}
+
 async function readPage(url: string): Promise<PartialDetails | null> {
   const { text, url: finalUrl } = await getText(url, { browser: true, timeoutMs: 9000 });
-  if (!looksLikeBookPage(finalUrl)) return null;
-  const parsed = parseGoodreadsBook(text, finalUrl);
-  return parsed.title || parsed.rating ? parsed : null;
+  return bookOn(url, text, finalUrl);
+}
+
+/** A Goodreads link gives the book, or says why it did not. */
+export type LinkRead = { page: PartialDetails } | { problem: string };
+
+// Waits before the second and third try of a link.
+const RETRY_MS = [1000, 2000];
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const timedOut = (error: unknown) => error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+
+async function readLinkOnce(url: string): Promise<LinkRead> {
+  try {
+    const { text, url: finalUrl } = await getText(url, { browser: true, timeoutMs: 9000 });
+    const page = bookOn(url, text, finalUrl);
+    if (page) return { page };
+    if (!looksLikeBookPage(finalUrl)) return { problem: `Goodreads sent ${new URL(finalUrl).pathname} instead of the book page.` };
+    const title = pageTitle(text).slice(0, 80);
+    return { problem: `Goodreads sent a page without the book in it${title ? ` ("${title}")` : ""}.` };
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) return { problem: "Goodreads has no book page at this address." };
+    throw error;
+  }
+}
+
+/**
+ * Reads a Goodreads book link. Now and then Goodreads answers a good address with an error or a
+ * page without the book, and the same address works a moment later, so a failed read is tried
+ * twice more. Throws when Goodreads cannot be reached.
+ */
+export async function readGoodreadsLink(url: string): Promise<LinkRead> {
+  for (let tries = 1; ; tries++) {
+    const last = tries > RETRY_MS.length;
+    try {
+      const read = await readLinkOnce(url);
+      if ("page" in read || last) return read;
+    } catch (error) {
+      // A timeout already took its full wait.
+      if (last || timedOut(error)) throw error;
+    }
+    await sleep(RETRY_MS[tries - 1]);
+  }
 }
 
 function matches(hit: GoodreadsSearchHit, title: string, author?: string) {
@@ -320,10 +389,10 @@ export async function goodreadsLookup(q: {
   };
 
   if (q.url) {
-    const page = await attempt(q.url);
-    if (page) return inLanguage(page) ?? workOnly(page);
-    if (lastError) throw lastError;
-    return null;
+    const read = await readGoodreadsLink(q.url);
+    if (!("page" in read)) return null;
+    const page = { ...read.page, coverUrl: realCover(read.page.coverUrl) };
+    return inLanguage(page) ?? workOnly(page);
   }
 
   // Search first: it leads to the edition Goodreads itself shows for the book, the one a

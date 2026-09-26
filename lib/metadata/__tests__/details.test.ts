@@ -376,6 +376,21 @@ describe("URL import", () => {
     expect(d.covers.map((c) => c.source)).toEqual(["goodreads", "googlebooks"]);
   });
 
+  it("searches the title in a Goodreads link whose page cannot be read, and says why", async () => {
+    vi.useFakeTimers();
+    fakeFetch([
+      [/goodreads\.com\/book\/show\//, { body: "<html><head><title>Goodreads</title></head></html>", type: "text/html" }],
+      catalogRoutes.googleSearch,
+      catalogRoutes.olSearch,
+    ]);
+    const pending = lookupUrl(`${GR}/book/show/50202953-piranesi`);
+    await vi.runAllTimersAsync();
+    const res = await pending;
+    vi.useRealTimers();
+    expect("candidates" in res && res.candidates[0].title).toBe("Piranesi");
+    expect("notes" in res && res.notes).toEqual(['Goodreads sent a page without the book in it ("Goodreads").']);
+  });
+
   it("searches the ISBN in an Amazon link", async () => {
     const calls = fakeFetch([catalogRoutes.googleSearch, catalogRoutes.olSearch]);
     const res = await lookupUrl("https://www.amazon.com/Left-Hand-Darkness-Ursula-Guin/dp/0441478123");
