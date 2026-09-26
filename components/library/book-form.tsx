@@ -37,6 +37,7 @@ export interface BookFormValues {
   description: string;
   startedAt: string;
   finishedAt: string;
+  finishedYear: string;
   /** Carried from an import; not edited directly. */
   ratingSource?: RatingSource;
   ratingsCount?: number;
@@ -66,6 +67,7 @@ export function emptyValues(): BookFormValues {
     description: "",
     startedAt: "",
     finishedAt: "",
+    finishedYear: "",
   };
 }
 
@@ -92,6 +94,7 @@ export function valuesFromBook(book: Book): BookFormValues {
     description: book.description ?? "",
     startedAt: book.startedAt ?? "",
     finishedAt: book.finishedAt ?? "",
+    finishedYear: book.finishedYear?.toString() ?? "",
     ratingSource: book.ratingSource,
     ratingsCount: book.ratingsCount,
     seriesTotal: book.series?.total,
@@ -131,6 +134,9 @@ export function validate(values: BookFormValues) {
   if (values.status === "reading" && Number(values.currentPage) > pages) return "Current page is past the last page.";
   const dates = datesProblem({ startedAt: values.startedAt || undefined, finishedAt: values.finishedAt || undefined });
   if (dates) return dates;
+  const year = Number(values.finishedYear);
+  if (values.status === "completed" && !values.finishedAt && values.finishedYear && (year < 1900 || year > Number(today().slice(0, 4))))
+    return "The year read is not a valid year.";
   return null;
 }
 
@@ -174,6 +180,8 @@ export async function toBookInput(values: BookFormValues, existing?: Book): Prom
     // Only the dates the reader gives. Starting to read happens now, so it defaults to today.
     startedAt: status === "tbr" ? undefined : values.startedAt || (status === "reading" ? date : undefined),
     finishedAt: status === "completed" ? values.finishedAt || undefined : undefined,
+    // A year stands in for the date only when the date is not known.
+    finishedYear: status === "completed" && !values.finishedAt ? num(values.finishedYear) : undefined,
     review: existing?.review ?? "",
     summary: existing?.summary ?? "",
     sourceUrl: values.sourceUrl.trim() || undefined,
@@ -301,7 +309,21 @@ export function BookForm({
               )}
             </div>
             {values.status === "completed" && (
-              <p className="mt-2 text-xs text-muted-foreground">Leave empty if you do not remember. An undated book counts in all-time totals only.</p>
+              <div className="mt-3 grid grid-cols-2 items-end gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor={`${id}-year`}>Or the year</Label>
+                  <Input
+                    id={`${id}-year`}
+                    inputMode="numeric"
+                    placeholder={today().slice(0, 4)}
+                    disabled={Boolean(values.finishedAt)}
+                    value={values.finishedAt ? values.finishedAt.slice(0, 4) : values.finishedYear}
+                    onChange={(e) => set("finishedYear", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    className="tabular"
+                  />
+                </div>
+                <p className="pb-1 text-xs text-muted-foreground">No date? A year puts the book in that year&apos;s goal and stats. With neither, it counts in all time only.</p>
+              </div>
             )}
           </motion.div>
         )}

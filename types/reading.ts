@@ -71,6 +71,8 @@ export interface Book {
   addedAt: string;
   startedAt?: string;
   finishedAt?: string;
+  /** The year it was finished, when the exact date is not known. Ignored when finishedAt is set. */
+  finishedYear?: number;
   /** Rich text (HTML) written in the vault. */
   review: string;
   summary: string;

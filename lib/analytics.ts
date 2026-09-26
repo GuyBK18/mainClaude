@@ -31,11 +31,21 @@ export function analyticsFor(data: LibrarySnapshot, range: Range, todayISO: stri
   const start = rangeStart(range, todayISO, earliest);
   const inRange = (date?: string) => Boolean(date && date >= start && date <= todayISO);
 
-  // A book finished on an unknown date counts in all time, and in no shorter range.
-  const finished = data.books.filter((b) => b.status === "completed" && (range === "all" || inRange(b.finishedAt)));
+  // A finished book counts in a range when its finish date, or only its year for "This year",
+  // falls in it. With neither it counts in all time only.
+  const thisYear = Number(todayISO.slice(0, 4));
+  const finishedInRange = (b: LibrarySnapshot["books"][number]) =>
+    range === "all" || (b.finishedAt ? inRange(b.finishedAt) : range === "year" && b.finishedYear === thisYear);
+  const finished = data.books.filter((b) => b.status === "completed" && finishedInRange(b));
   const sessions = data.sessions.filter((s) => inRange(s.date));
 
-  const pages = sessions.reduce((sum, s) => sum + s.pages, 0);
+  // A finished book was read in full. Pages it has no logged reading for count when it was finished.
+  const logged = new Map<string, number>();
+  for (const s of data.sessions) logged.set(s.bookId, (logged.get(s.bookId) ?? 0) + s.pages);
+  const unlogged = finished.map((b) => ({ b, pages: Math.max(0, b.pageCount - (logged.get(b.id) ?? 0)) }));
+
+  const loggedPages = sessions.reduce((sum, s) => sum + s.pages, 0);
+  const pages = loggedPages + unlogged.reduce((sum, u) => sum + u.pages, 0);
   const activeDays = new Set(sessions.filter((s) => s.pages > 0).map((s) => s.date)).size;
   const speeds = velocity(finished);
 
@@ -54,12 +64,17 @@ export function analyticsFor(data: LibrarySnapshot, range: Range, todayISO: stri
     const m = byKey.get(s.date.slice(0, 7));
     if (m) m.pages += s.pages;
   }
+  for (const u of unlogged) {
+    const m = u.b.finishedAt && byKey.get(u.b.finishedAt.slice(0, 7));
+    if (m) m.pages += u.pages;
+  }
 
   return {
     start,
     finishedCount: finished.length,
     pages,
-    pagesPerReadingDay: activeDays ? Math.round(pages / activeDays) : null,
+    // Only logged reading has days.
+    pagesPerReadingDay: activeDays ? Math.round(loggedPages / activeDays) : null,
     averageLength: finished.length ? Math.round(finished.reduce((s, b) => s + b.pageCount, 0) / finished.length) : null,
     medianDays: median(speeds.map((v) => v.days)),
     genres: genreDistribution(finished),

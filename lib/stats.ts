@@ -10,7 +10,7 @@ export function progressOf(book: Book) {
 }
 
 export function completedIn(books: Book[], year: number) {
-  return books.filter((b) => b.status === "completed" && b.finishedAt && yearOf(b.finishedAt) === year);
+  return books.filter((b) => b.status === "completed" && (b.finishedAt ? yearOf(b.finishedAt) : b.finishedYear) === year);
 }
 
 export function goalProgress(books: Book[], target: number, todayISO: string) {
