@@ -201,7 +201,7 @@ export function BookVault({ id }: { id: string }) {
             <Fact label="Format">{FORMAT_LABEL[book.format]}</Fact>
             <Fact label="Publisher">{book.publisher ?? "—"}</Fact>
             <Fact label="Started">{formatDate(book.startedAt)}</Fact>
-            <Fact label="Finished">{formatDate(book.finishedAt)}</Fact>
+            <Fact label="Finished">{book.finishedAt ? formatDate(book.finishedAt) : (book.finishedYear ?? "—")}</Fact>
             <Fact label="Read in">{readingDays ? `${readingDays} ${readingDays === 1 ? "day" : "days"}` : "—"}</Fact>
             {book.language && (
               <div className="col-span-2 lg:col-span-3">

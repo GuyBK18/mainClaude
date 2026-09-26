@@ -49,4 +49,9 @@ describe("pace edge cases", () => {
     expect(readingPace(tracked, [s("2026-09-20", 270)], "2026-09-21")).toBeNull();
     expect(recentDays([s("2026-09-20", 270)], tracked, "2026-09-20", 1)).toEqual([{ date: "2026-09-20", pages: 0 }]);
   });
+
+  it("counts the first day in full when the book started from a known page", () => {
+    const known = { ...book, trackedFrom: { date: "2026-09-20", jump: 0 } };
+    expect(readingPace(known, [s("2026-09-20", 30), s("2026-09-21", 30)], "2026-09-21")).toEqual({ perDay: 60, left: 6 });
+  });
 });

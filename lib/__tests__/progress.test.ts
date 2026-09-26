@@ -11,8 +11,14 @@ describe("saving a page", () => {
     expect(progressPatch(reading, -5, "2026-09-26", 60)!.patch.currentPage).toBe(0);
   });
 
+  it("counts the first save as reading when the book already had a page", () => {
+    expect(progressPatch(reading, 130, "2026-09-26", 0)!.patch.trackedFrom).toEqual({ date: "2026-09-26", jump: 0 });
+    const fresh = mk({ status: "reading", pageCount: 300, currentPage: 0 });
+    expect(progressPatch(fresh, 285, "2026-09-26", 0)!.patch.trackedFrom).toEqual({ date: "2026-09-26", jump: 285 });
+  });
+
   it("records the first jump only when nothing is logged yet", () => {
-    expect(progressPatch(reading, 150, "2026-09-26", 0)!.patch.trackedFrom).toEqual({ date: "2026-09-26", jump: 50 });
+    expect(progressPatch({ ...reading, currentPage: 0 }, 50, "2026-09-26", 0)!.patch.trackedFrom).toEqual({ date: "2026-09-26", jump: 50 });
     expect(progressPatch(reading, 150, "2026-09-26", 60)!.patch).not.toHaveProperty("trackedFrom");
   });
 

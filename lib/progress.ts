@@ -2,7 +2,7 @@ import type { Book, BookPatch, ReadingSession } from "@/types/reading";
 
 /**
  * The book changes that come with moving to a page, and the pages to log for it. The first save
- * of a book with no logged reading records its jump as the starting point. Reaching the last
+ * of a book with no logged reading, from page 0, records its jump as the starting point. Reaching the last
  * page finishes the book today; stepping back from it reopens the book. A step back takes
  * pages off the log only when the log would otherwise run past the new page.
  */
@@ -13,7 +13,8 @@ export function progressPatch(book: Book, page: number, date: string, logged: nu
 
   const patch: BookPatch = { currentPage: next };
   const log = delta > 0 ? delta : Math.min(0, next - logged);
-  if (logged === 0) patch.trackedFrom = delta > 0 ? { date, jump: delta } : undefined;
+  // A book already past page 0 has its starting point, from the form, so all of this is reading.
+  if (logged === 0) patch.trackedFrom = delta > 0 ? { date, jump: book.currentPage === 0 ? delta : 0 } : undefined;
   if (book.status === "tbr" && next > 0) {
     patch.status = "reading";
     patch.startedAt = date;
