@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion, useMotionTemplate, useMotionValue, useSpring, useTransform } from "framer-motion";
 import type { Book, BookFormat } from "@/types/reading";
 import { tiltSpring } from "@/lib/motion";
-import { pageFaces } from "@/lib/book-shape";
+import { boardInsides, pageFaces } from "@/lib/book-shape";
 import { BookCover } from "@/components/book/book-cover";
 
 /** Real books are not one size. Height follows format, thickness follows page count. */
@@ -83,6 +83,16 @@ export function Book3D({ book }: { book: Book }) {
           className={face}
           style={{ width: W, height: H, backgroundColor: ground, transform: `translate(-50%, -50%) rotateY(180deg) translateZ(${T / 2}px)` }}
         />
+
+        {/* A hardcover's boards seen from inside, above and beside the pages. */}
+        {boardInsides(book.format, T).map((board) => (
+          <div
+            key={board.transform}
+            aria-hidden
+            className={face}
+            style={{ width: W, height: H, borderStyle: "solid", borderColor: `color-mix(in oklab, ${ground} 70%, black)`, ...board }}
+          />
+        ))}
 
         {/* Spine, with a rounded highlight so it reads as bound board. */}
         <div

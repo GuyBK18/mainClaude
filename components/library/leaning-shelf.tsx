@@ -23,7 +23,7 @@ import {
   type Placed,
   type Slab,
 } from "@/lib/leaning-shelf";
-import { pageFaces } from "@/lib/book-shape";
+import { boardInsides, pageFaces } from "@/lib/book-shape";
 import { BookCover } from "@/components/book/book-cover";
 import { shelfBoard } from "./shelf-board";
 
@@ -187,6 +187,16 @@ function LeaningBook({ book, slab, ref }: { book: Book; slab: Slab; ref: (el: HT
         className={face}
         style={{ width: W, height: H, background: `color-mix(in oklab, ${ground} 85%, black)`, transform: `translate(-50%, -50%) rotateY(180deg) translateZ(${T / 2}px)` }}
       />
+
+      {/* A hardcover's boards seen from inside, above and beside the pages. */}
+      {boardInsides(book.format, T).map((board) => (
+        <div
+          key={board.transform}
+          aria-hidden
+          className={face}
+          style={{ width: W, height: H, borderStyle: "solid", borderColor: `color-mix(in oklab, ${ground} 70%, black)`, ...board }}
+        />
+      ))}
 
       {/* The spine is the face you see most on this shelf, so it carries the title at a readable size. */}
       <div
