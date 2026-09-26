@@ -57,3 +57,26 @@ describe("migrate to version 2", () => {
     expect(migrate(current).books).toHaveLength(1);
   });
 });
+
+describe("version 3", () => {
+  it("clears dates and the page log the app made up for books marked finished", async () => {
+    const { migrate } = await import("@/lib/data/migrations");
+    const book = (id: string, startedAt: string, finishedAt: string) =>
+      ({ id, title: id, status: "completed", pageCount: 300, startedAt, finishedAt }) as never;
+    const out = migrate({
+      version: 2,
+      books: [book("stamped", "2026-09-26", "2026-09-26"), book("added", "2026-09-26", "2026-09-26"), book("real", "2026-09-01", "2026-09-20")],
+      sessions: [
+        { id: "s1", bookId: "added", date: "2026-09-26", pages: 300 },
+        { id: "s2", bookId: "real", date: "2026-09-10", pages: 120 },
+      ],
+      highlights: [],
+      goals: [],
+    });
+    const dates = Object.fromEntries(out.books.map((b) => [b.id, [b.startedAt, b.finishedAt]]));
+    expect(dates.stamped).toEqual([undefined, undefined]);
+    expect(dates.added).toEqual([undefined, undefined]);
+    expect(dates.real).toEqual(["2026-09-01", "2026-09-20"]);
+    expect(out.sessions.map((s) => s.id)).toEqual(["s2"]);
+  });
+});

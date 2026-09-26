@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { RatingInput } from "@/components/book/rating";
+import { datesProblem } from "@/lib/status";
 
 export interface BookFormValues {
   title: string;
@@ -34,6 +35,8 @@ export interface BookFormValues {
   isbn: string;
   language: string;
   description: string;
+  startedAt: string;
+  finishedAt: string;
   /** Carried from an import; not edited directly. */
   ratingSource?: RatingSource;
   ratingsCount?: number;
@@ -61,6 +64,8 @@ export function emptyValues(): BookFormValues {
     isbn: "",
     language: "",
     description: "",
+    startedAt: "",
+    finishedAt: "",
   };
 }
 
@@ -85,6 +90,8 @@ export function valuesFromBook(book: Book): BookFormValues {
     isbn: book.isbn ?? "",
     language: book.language ?? "",
     description: book.description ?? "",
+    startedAt: book.startedAt ?? "",
+    finishedAt: book.finishedAt ?? "",
     ratingSource: book.ratingSource,
     ratingsCount: book.ratingsCount,
     seriesTotal: book.series?.total,
@@ -122,6 +129,8 @@ export function validate(values: BookFormValues) {
   if (!values.author.trim()) return "Add an author.";
   if (!Number.isInteger(pages) || pages <= 0) return "Page count must be a whole number above zero.";
   if (values.status === "reading" && Number(values.currentPage) > pages) return "Current page is past the last page.";
+  const dates = datesProblem({ startedAt: values.startedAt || undefined, finishedAt: values.finishedAt || undefined });
+  if (dates) return dates;
   return null;
 }
 
@@ -162,8 +171,9 @@ export async function toBookInput(values: BookFormValues, existing?: Book): Prom
       ? { name: values.seriesName.trim(), position: num(values.seriesPosition) ?? 1, total: values.seriesTotal }
       : undefined,
     cover,
-    startedAt: status === "tbr" ? existing?.startedAt : (existing?.startedAt ?? date),
-    finishedAt: status === "completed" ? (existing?.finishedAt ?? date) : undefined,
+    // Only the dates the reader gives. Starting to read happens now, so it defaults to today.
+    startedAt: status === "tbr" ? undefined : values.startedAt || (status === "reading" ? date : undefined),
+    finishedAt: status === "completed" ? values.finishedAt || undefined : undefined,
     review: existing?.review ?? "",
     summary: existing?.summary ?? "",
     sourceUrl: values.sourceUrl.trim() || undefined,
@@ -224,7 +234,14 @@ export function BookForm({
           <Select
             id={`${id}-status`}
             value={values.status}
-            onValueChange={(v) => set("status", v)}
+            onValueChange={(v) =>
+              onChange({
+                ...values,
+                status: v,
+                // Finishing a book you were reading most likely happened today. Otherwise the date is unknown.
+                finishedAt: v === "completed" && !values.finishedAt && values.status === "reading" ? today() : values.finishedAt,
+              })
+            }
             options={STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
           />
         </div>
@@ -260,6 +277,32 @@ export function BookForm({
                 className="tabular"
               />
             </div>
+          </motion.div>
+        )}
+        {values.status !== "tbr" && (
+          <motion.div
+            key="dates"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: easeOut }}
+            className="overflow-hidden"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor={`${id}-started`}>Started</Label>
+                <Input id={`${id}-started`} type="date" max={today()} value={values.startedAt} onChange={(e) => set("startedAt", e.target.value)} />
+              </div>
+              {values.status === "completed" && (
+                <div className="grid gap-2">
+                  <Label htmlFor={`${id}-finished`}>Finished</Label>
+                  <Input id={`${id}-finished`} type="date" max={today()} value={values.finishedAt} onChange={(e) => set("finishedAt", e.target.value)} />
+                </div>
+              )}
+            </div>
+            {values.status === "completed" && (
+              <p className="mt-2 text-xs text-muted-foreground">Leave empty if you do not remember. An undated book counts in all-time totals only.</p>
+            )}
           </motion.div>
         )}
         {(values.status === "completed" || values.status === "dnf") && (

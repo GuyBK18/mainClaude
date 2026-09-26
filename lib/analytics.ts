@@ -31,7 +31,8 @@ export function analyticsFor(data: LibrarySnapshot, range: Range, todayISO: stri
   const start = rangeStart(range, todayISO, earliest);
   const inRange = (date?: string) => Boolean(date && date >= start && date <= todayISO);
 
-  const finished = data.books.filter((b) => b.status === "completed" && inRange(b.finishedAt));
+  // A book finished on an unknown date counts in all time, and in no shorter range.
+  const finished = data.books.filter((b) => b.status === "completed" && (range === "all" || inRange(b.finishedAt)));
   const sessions = data.sessions.filter((s) => inRange(s.date));
 
   const pages = sessions.reduce((sum, s) => sum + s.pages, 0);

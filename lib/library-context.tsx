@@ -61,10 +61,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
   const addBook = useCallback(
     async (input: NewBook) => {
+      // Pages read before the book was added were read on days the app cannot know, so none are logged.
       const book = await repo.createBook(input);
-      if (book.status !== "tbr" && book.currentPage > 0) {
-        await repo.logPages(book.id, book.finishedAt ?? today(), book.currentPage);
-      }
       await refresh();
       return book;
     },
