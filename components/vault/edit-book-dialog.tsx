@@ -25,7 +25,7 @@ export function EditBookDialog({ book, open, onOpenChange }: { book: Book; open:
     // A new page on a book still being read is reading, logged the same way as the slider.
     const moved = input.status === book.status && (book.status === "reading" || book.status === "dnf") && input.currentPage !== book.currentPage;
     await updateBook(book.id, moved ? { ...input, currentPage: book.currentPage } : input);
-    if (moved) await setProgress(book.id, input.currentPage, { ...book, ...input, currentPage: book.currentPage });
+    if (moved) await setProgress(book.id, input.currentPage, { base: { ...book, ...input, currentPage: book.currentPage } });
     setBusy(false);
     onOpenChange(false);
   };

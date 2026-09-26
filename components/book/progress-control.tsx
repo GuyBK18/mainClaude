@@ -2,10 +2,13 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Book } from "@/types/reading";
 import { useLibrary } from "@/lib/library-context";
+import { addDays, formatShortDate, today } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 /** Arrow keys commit on every press; saves wait this long so a run of presses logs once. */
 const SAVE_DELAY = 450;
@@ -18,6 +21,8 @@ export function ProgressControl({ book }: { book: Book }) {
   // Local values exist only while the reader is mid-change; otherwise the stored page shows.
   const [pending, setPending] = useState<number | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
+  // The day the next save is logged on. Null is today; a missed day applies to one save, then resets.
+  const [day, setDay] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flush = useRef<(() => void) | null>(null);
 
@@ -45,11 +50,13 @@ export function ProgressControl({ book }: { book: Book }) {
     timer.current = null;
     const delta = next - book.currentPage;
     if (delta !== 0) {
-      const change = await setProgress(book.id, next);
+      const change = await setProgress(book.id, next, { date: day ?? undefined });
+      setDay(null);
       // One toast per book, replaced by each save, so stepping page by page does not stack them.
       const toastId = `progress-${book.id}`;
-      if (next === book.pageCount) toast(`Finished ${book.title}`, { id: toastId });
-      else if (change && change.log > 0) toast(`Logged ${change.log} ${change.log === 1 ? "page" : "pages"} today`, { id: toastId });
+      const when = dayLabel(day, "on");
+      if (next === book.pageCount) toast(`Finished ${book.title}${day ? ` ${when}` : ""}`, { id: toastId });
+      else if (change && change.log > 0) toast(`Logged ${change.log} ${change.log === 1 ? "page" : "pages"} ${when}`, { id: toastId });
       else if (change && change.delta > 0) toast(`Tracking from page ${next}. Reading from here counts in your stats.`, { id: toastId });
     }
     setPending(null);
@@ -77,7 +84,7 @@ export function ProgressControl({ book }: { book: Book }) {
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-4 font-display text-[13px]">
-        <div className="flex items-center gap-1.5 text-muted-foreground">
+        <div className="flex items-center gap-1 whitespace-nowrap text-muted-foreground sm:gap-1.5">
           <label htmlFor={id}>Page</label>
           <StepButton dir={-1} disabled={page <= 0} onStep={() => commit(latest.current - 1)} />
           <input
@@ -99,6 +106,8 @@ export function ProgressControl({ book }: { book: Book }) {
           <span>
             of <span className="tabular">{book.pageCount}</span>
           </span>
+          <span aria-hidden>·</span>
+          <ReadDay value={day} onChange={setDay} />
         </div>
         <span className="tabular text-foreground">{percent}%</span>
       </div>
@@ -171,5 +180,79 @@ function StepButton({ dir, disabled, onStep }: { dir: 1 | -1; disabled: boolean;
     >
       <Icon className="size-3.5" strokeWidth={1.75} />
     </button>
+  );
+}
+
+/** "today", "yesterday" or a short date; with "on", the phrase that follows a page count. */
+function dayLabel(day: string | null, on?: "on") {
+  const now = today();
+  if (!day || day === now) return "today";
+  if (day === addDays(now, -1)) return "yesterday";
+  return on ? `on ${formatShortDate(day)}` : formatShortDate(day);
+}
+
+const RECENT_DAYS = [
+  { back: 0, label: "Today" },
+  { back: 1, label: "Yesterday" },
+  { back: 2, label: "2 days ago" },
+  { back: 3, label: "3 days ago" },
+];
+
+/** Picks the day a save is logged on, for reading done on a day the reader did not update. */
+function ReadDay({ value, onChange }: { value: string | null; onChange: (day: string | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const now = today();
+  const selected = value ?? now;
+  const pick = (date: string) => {
+    onChange(date >= now ? null : date);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Reading logged ${dayLabel(value, "on")}. Change the day`}
+          className={cn(
+            "-mx-1 inline-flex items-center gap-0.5 rounded-sm px-1 py-0.5 transition-colors duration-150 hover:bg-ink-6 hover:text-foreground",
+            value && "text-foreground underline decoration-dotted underline-offset-4",
+          )}
+        >
+          {dayLabel(value)}
+          <ChevronDown className="size-3" strokeWidth={1.75} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56">
+        <p className="label-meta px-2 pt-2 pb-1.5">Log this reading on</p>
+        {RECENT_DAYS.map(({ back, label }) => {
+          const date = addDays(now, -back);
+          return (
+            <button
+              key={back}
+              type="button"
+              onClick={() => pick(date)}
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left font-display text-[13px] transition-colors hover:bg-ink-6"
+            >
+              <Check className={cn("size-3.5", selected === date ? "opacity-100" : "opacity-0")} />
+              <span className="flex-1">{label}</span>
+              <span className="text-xs text-muted-foreground">{formatShortDate(date)}</span>
+            </button>
+          );
+        })}
+        <label className="mt-1 flex items-center justify-between gap-2 border-t border-border px-2 pt-2 pb-1.5 font-display text-[13px]">
+          <span className="text-muted-foreground">Another day</span>
+          <input
+            type="date"
+            min="1900-01-01"
+            max={now}
+            value={selected}
+            // Typing a year changes the value digit by digit, so this keeps the menu open.
+            onChange={(e) => e.target.value && e.target.value <= now && onChange(e.target.value >= now ? null : e.target.value)}
+            className="rounded-sm border border-border bg-transparent px-1.5 py-0.5 text-xs outline-none focus:border-foreground"
+          />
+        </label>
+      </PopoverContent>
+    </Popover>
   );
 }

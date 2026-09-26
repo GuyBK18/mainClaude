@@ -5,7 +5,7 @@ import type { Book, BookPatch, NewBook, NewHighlight, ReadingGoal } from "@/type
 import { getRepository, type LibrarySnapshot } from "@/lib/data";
 import { startFileBackup, type BackupStatus, type FileBackup } from "@/lib/data/file-backup";
 import { today } from "@/lib/dates";
-import { progressPatch } from "@/lib/progress";
+import { dayPatch, progressPatch } from "@/lib/progress";
 
 interface LibraryContextValue {
   data: LibrarySnapshot | null;
@@ -17,10 +17,14 @@ interface LibraryContextValue {
   addBooks: (inputs: NewBook[]) => Promise<Book[]>;
   updateBook: (id: string, patch: BookPatch) => Promise<void>;
   deleteBook: (id: string) => Promise<void>;
-  /** Moves the bookmark and logs the page difference as today's reading. */
-  /** `base` is the book as just saved, when a save in the same step changed it. */
-  /** Resolves with the pages moved and the pages logged, or null when nothing changed. */
-  setProgress: (id: string, page: number, base?: Book) => Promise<{ delta: number; log: number } | null>;
+  /**
+   * Moves the bookmark and logs the page difference as reading on `date`, today unless the
+   * reader picks a day they missed. `base` is the book as just saved, when a save in the same
+   * step changed it. Resolves with the pages moved and the pages logged, or null when nothing changed.
+   */
+  setProgress: (id: string, page: number, options?: { base?: Book; date?: string }) => Promise<{ delta: number; log: number } | null>;
+  /** Sets the pages read on one day for each book given. Resolves with how many books changed. */
+  setDayPages: (date: string, entries: { bookId: string; pages: number }[]) => Promise<number>;
   addHighlight: (input: NewHighlight) => Promise<void>;
   deleteHighlight: (id: string) => Promise<void>;
   setGoal: (goal: ReadingGoal) => Promise<void>;
@@ -102,10 +106,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   );
 
   const setProgress = useCallback(
-    async (id: string, page: number, base?: Book) => {
+    async (id: string, page: number, { base, date = today() }: { base?: Book; date?: string } = {}) => {
       const book = base ?? data?.books.find((b) => b.id === id);
       if (!book) return null;
-      const date = today();
       const logged = data?.sessions.reduce((sum, s) => (s.bookId === id ? sum + s.pages : sum), 0) ?? 0;
       const change = progressPatch(book, page, date, logged);
       if (!change) return null;
@@ -114,6 +117,24 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       if (change.log !== 0) await repo.logPages(id, date, change.log);
       await refresh();
       return { delta: change.delta, log: change.log };
+    },
+    [data, repo, refresh],
+  );
+
+  const setDayPages = useCallback(
+    async (date: string, entries: { bookId: string; pages: number }[]) => {
+      if (!data) return 0;
+      let changed = 0;
+      for (const { bookId, pages } of entries) {
+        const book = data.books.find((b) => b.id === bookId);
+        const change = book && dayPatch(book, date, pages, data.sessions);
+        if (!change) continue;
+        if (Object.keys(change.patch).length) await repo.updateBook(bookId, change.patch);
+        await repo.logPages(bookId, date, change.log);
+        changed++;
+      }
+      if (changed) await refresh();
+      return changed;
     },
     [data, repo, refresh],
   );
@@ -143,8 +164,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, backup, restoreCopy }),
-    [data, addBook, addBooks, updateBook, deleteBook, setProgress, addHighlight, deleteHighlight, setGoal, backup, restoreCopy],
+    () => ({ data, addBook, addBooks, updateBook, deleteBook, setProgress, setDayPages, addHighlight, deleteHighlight, setGoal, backup, restoreCopy }),
+    [data, addBook, addBooks, updateBook, deleteBook, setProgress, setDayPages, addHighlight, deleteHighlight, setGoal, backup, restoreCopy],
   );
 
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;

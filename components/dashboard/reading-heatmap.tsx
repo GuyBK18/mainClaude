@@ -5,6 +5,8 @@ import type { ReadingSession } from "@/types/reading";
 import { HEAT_STEPS, heatmap, lastYear, streaks, type HeatCell } from "@/lib/stats";
 import { formatDate } from "@/lib/dates";
 import { Card } from "@/components/ui/card";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { DayLog } from "./day-log";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEKS = 53;
@@ -18,6 +20,8 @@ export function ReadingHeatmap({ sessions, todayISO }: { sessions: ReadingSessio
   const scroller = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<Hover | null>(null);
+  // The day whose reading is being filled in, placed like the hover label.
+  const [picked, setPicked] = useState<Hover | null>(null);
 
   // On narrow screens the grid scrolls; start at the most recent weeks.
   useEffect(() => {
@@ -31,12 +35,12 @@ export function ReadingHeatmap({ sessions, todayISO }: { sessions: ReadingSessio
     return first ? MONTHS[Number(first.date.slice(5, 7)) - 1] : "";
   });
 
-  const showCell = (cell: HeatCell, target: HTMLElement) => {
+  const placeOf = (cell: HeatCell, target: HTMLElement): Hover | null => {
     const box = frame.current?.getBoundingClientRect();
     const rect = target.getBoundingClientRect();
-    if (!box) return;
-    setHover({ cell, x: rect.left - box.left + rect.width / 2, y: rect.top - box.top });
+    return box ? { cell, x: rect.left - box.left + rect.width / 2, y: rect.top - box.top } : null;
   };
+  const showCell = (cell: HeatCell, target: HTMLElement) => setHover(placeOf(cell, target));
 
   return (
     <Card className="p-6">
@@ -77,7 +81,14 @@ export function ReadingHeatmap({ sessions, todayISO }: { sessions: ReadingSessio
                 <span
                   key={cell.date}
                   onPointerEnter={(e) => !cell.future && showCell(cell, e.currentTarget)}
-                  className="aspect-square rounded-[2px] transition-[outline-color] duration-100 outline outline-1 -outline-offset-1 outline-transparent hover:outline-foreground"
+                  onClick={(e) => {
+                    if (cell.future) return;
+                    setHover(null);
+                    setPicked(placeOf(cell, e.currentTarget));
+                  }}
+                  className="aspect-square cursor-pointer rounded-[2px] data-[future=true]:cursor-default transition-[outline-color] duration-100 outline outline-1 -outline-offset-1 outline-transparent hover:outline-foreground"
+                  data-date={cell.date}
+                  data-future={cell.future}
                   style={{ backgroundColor: cell.future ? "transparent" : `var(--heat-${cell.level})` }}
                 />
               ))}
@@ -85,7 +96,16 @@ export function ReadingHeatmap({ sessions, todayISO }: { sessions: ReadingSessio
           </div>
         </div>
 
-        {hover && (
+        <Popover open={picked !== null} onOpenChange={(open) => !open && setPicked(null)}>
+          <PopoverAnchor asChild>
+            <span aria-hidden className="pointer-events-none absolute size-px" style={{ left: picked?.x ?? 0, top: picked?.y ?? 0 }} />
+          </PopoverAnchor>
+          <PopoverContent side="top" align="center" className="w-80 p-0">
+            {picked && <DayLog key={picked.cell.date} date={picked.cell.date} onDone={() => setPicked(null)} />}
+          </PopoverContent>
+        </Popover>
+
+        {hover && !picked && (
           <div
             className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-sm bg-foreground px-2 py-1 font-display text-[11px] whitespace-nowrap text-background"
             style={{ left: hover.x, top: hover.y - 6 }}
@@ -97,6 +117,7 @@ export function ReadingHeatmap({ sessions, todayISO }: { sessions: ReadingSessio
       </div>
 
       <div className="mt-5 flex items-center justify-end gap-3 font-display text-[10px] text-muted-foreground">
+        <span className="mr-auto">Click a day to fill in or fix its reading.</span>
         <span>Pages a day</span>
         <div className="flex items-end gap-[3px]">
           {[0, 1, 2, 3, 4].map((level) => (
