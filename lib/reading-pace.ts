@@ -2,23 +2,16 @@ import type { Book, ReadingSession } from "@/types/reading";
 import { addDays, daysBetween } from "@/lib/dates";
 
 /**
- * A book's reading days after its first logged day. The first day only records where the
- * reader was when they started tracking, often deep into a book begun elsewhere, so it
- * says nothing about how fast they read.
+ * A book's reading days since tracking began. Where the reader already was when they started
+ * tracking is never logged, so every logged day is reading.
  */
 export function readingDays(sessions: ReadingSession[], book: Pick<Book, "id" | "trackedFrom">) {
-  const own = sessions.filter((s) => s.bookId === book.id).sort((a, b) => a.date.localeCompare(b.date));
-  const from = book.trackedFrom;
-  // Books tracked before trackedFrom existed: the whole first day is the starting point.
-  if (!from) return { start: own[0]?.date, days: own.slice(1) };
-  const days = own
-    .filter((s) => s.date >= from.date)
-    .map((s) => (s.date === from.date ? { ...s, pages: s.pages - from.jump } : s))
-    .filter((s) => s.pages > 0);
-  return { start: from.date, days };
+  const own = sessions.filter((s) => s.bookId === book.id && s.pages > 0).sort((a, b) => a.date.localeCompare(b.date));
+  const start = book.trackedFrom?.date ?? own[0]?.date;
+  return { start, days: start ? own.filter((s) => s.date >= start) : [] };
 }
 
-/** Pages a day since tracking began, and the days left at that pace. Null until a second day is logged. */
+/** Pages a day since tracking began, and the days left at that pace. Null until some reading is logged. */
 export function readingPace(book: Book, sessions: ReadingSession[], now: string) {
   const { start, days } = readingDays(sessions, book);
   const pages = days.reduce((sum, s) => sum + s.pages, 0);
@@ -35,7 +28,7 @@ export function paceText({ perDay, left }: { perDay: number; left: number }) {
   return `${rate} At this pace you finish ${left === 0 ? "today" : `in ${plural(left, "day")}`}.`;
 }
 
-/** Pages read on each of the last `count` days, oldest first, leaving out the starting point. */
+/** Pages read on each of the last `count` days, oldest first. */
 export function recentDays(sessions: ReadingSession[], book: Pick<Book, "id" | "trackedFrom">, now: string, count = 14) {
   const { days } = readingDays(sessions, book);
   const byDate = new Map(days.map((s) => [s.date, s.pages]));

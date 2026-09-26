@@ -64,6 +64,14 @@ describe("analytics ranges", () => {
     expect(analyticsFor(later, "year", TODAY).pages).toBe(760);
   });
 
+  it("counts pages before tracking began in all time only", () => {
+    const G = mk({ status: "completed", pageCount: 700, currentPage: 700, startedAt: "2026-09-01", finishedAt: "2026-09-25", trackedFrom: { date: "2026-09-10", page: 285 } });
+    const tracked = snap([G], [ss(G.id, "2026-09-12", 200), ss(G.id, "2026-09-25", 215)]);
+    expect(analyticsFor(tracked, "year", TODAY).pages).toBe(415);
+    expect(analyticsFor(tracked, "year", TODAY).months.at(-1)!.pages).toBe(415);
+    expect(analyticsFor(tracked, "all", TODAY).pages).toBe(700);
+  });
+
   it("finds the middle of an even number of books", () => {
     const books = [4, 6, 10, 20].map((d) => mk({ status: "completed", startedAt: "2026-01-01", finishedAt: `2026-01-${String(d).padStart(2, "0")}` }));
     expect(analyticsFor(snap(books), "year", TODAY).medianDays).toBe(8);

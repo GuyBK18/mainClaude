@@ -39,6 +39,9 @@ export interface LibraryRepository {
   createHighlight(input: NewHighlight): Promise<Highlight>;
   deleteHighlight(id: string): Promise<void>;
 
+  /** Removes every reading day logged for the book. */
+  deleteSessions(bookId: string): Promise<void>;
+
   /** Adds pages to the book's session for that day, creating it if needed. */
   logPages(bookId: string, date: string, pages: number): Promise<ReadingSession | null>;
 

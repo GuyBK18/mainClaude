@@ -126,6 +126,11 @@ export class LocalStorageRepository implements LibraryRepository {
     this.write({ ...data, highlights: data.highlights.filter((h) => h.id !== id) });
   }
 
+  async deleteSessions(bookId: string) {
+    const data = this.read();
+    this.write({ ...data, sessions: data.sessions.filter((s) => s.bookId !== bookId) });
+  }
+
   async logPages(bookId: string, date: string, pages: number) {
     const data = this.read();
     const sessions = withPages(data.sessions, bookId, date, pages, uid("s"));

@@ -62,7 +62,7 @@ Every change is saved to `library.json` in a folder on your computer, about half
 
 The code is in `lib/data/file-backup.ts` (browser), `lib/backup/store.ts` and `app/api/library/` (server).
 
-Reading progress is stored two ways. `Book.currentPage` is the bookmark. `ReadingSession` records pages per book per day and drives the heatmap, streaks and monthly totals. Moving the slider or typing a page logs the difference as today's session.
+Reading progress is stored two ways. `Book.currentPage` is the bookmark. `ReadingSession` records pages per book per day and drives the heatmap, streaks and monthly totals. Moving the slider or typing a page logs the difference as today's session. The first save of a book at page 0 is where you already were, not a day's reading: it sets `Book.trackedFrom` and logs nothing, so those pages count in all-time totals only. From a page set in the form, that page is the start and the rest is logged. A step back takes pages off the log, latest day first, only as far as the new page needs. Moving a book back to Want to read deletes its reading days. The dashboard's all-time pages and the analytics page's All time use the same count. The rules are in `lib/progress.ts`, `lib/stats.ts` and `lib/analytics.ts`.
 
 ## Design system
 

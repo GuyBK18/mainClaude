@@ -35,9 +35,10 @@ export function ProgressControl({ book }: { book: Book }) {
     timer.current = null;
     const delta = next - book.currentPage;
     if (delta !== 0) {
-      await setProgress(book.id, next);
+      const change = await setProgress(book.id, next);
       if (next === book.pageCount) toast(`Finished ${book.title}`);
-      else if (delta > 0) toast(`Logged ${delta} ${delta === 1 ? "page" : "pages"} today`);
+      else if (change && change.log > 0) toast(`Logged ${change.log} ${change.log === 1 ? "page" : "pages"} today`);
+      else if (change && change.delta > 0) toast(`Tracking from page ${next}. Reading from here counts in your stats.`);
     }
     setPending(null);
     setDraft(null);

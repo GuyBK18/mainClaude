@@ -72,10 +72,10 @@ export interface Book {
   startedAt?: string;
   finishedAt?: string;
   /**
-   * Where page tracking began: the first save's date and how many pages it jumped. That jump
-   * is where the reader already was, so the pace and the reading chart leave it out.
+   * Where page tracking began: the day and the page. Pages before it were read on days the app
+   * cannot know, so they are never logged and count only in all-time totals.
    */
-  trackedFrom?: { date: string; jump: number };
+  trackedFrom?: { date: string; page: number };
   /** The year it was finished, when the exact date is not known. Ignored when finishedAt is set. */
   finishedYear?: number;
   /** Rich text (HTML) written in the vault. */

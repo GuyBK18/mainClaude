@@ -1,7 +1,7 @@
 import type { LibrarySnapshot } from "./repository";
 
 /** Raise this with a new step below when stored libraries need a one-time change on load. */
-export const CURRENT_VERSION = 3;
+export const CURRENT_VERSION = 4;
 
 // The sample library that the first version wrote on first load. Listed only so it can be removed.
 const SAMPLE_BOOK_IDS = new Set([
@@ -77,11 +77,60 @@ function clearStampedDates(data: LibrarySnapshot): LibrarySnapshot {
   };
 }
 
+type Session = LibrarySnapshot["sessions"][number];
+/** How version 3 stored the start of tracking: the first save's jump, logged on that day. */
+type OldStart = { date: string; jump?: number; page?: number };
+
+/**
+ * Version 4 takes starting points out of the reading log. The first save of a book at page 0
+ * says where the reader already was, not what they read that day, so it now sets where tracking
+ * began and is never logged: those pages count in all-time totals only.
+ * - A book tracked in version 3 has its jump taken off its first day.
+ * - A book being read (or set aside) from before that has its whole first day taken as its
+ *   starting point, which is how the reading card already treated it.
+ * - A book in Want to read loses its reading days, as moving one there now does.
+ * Daily backup copies keep the old library.
+ */
+function separateStartingPoints(data: LibrarySnapshot): LibrarySnapshot {
+  let sessions = data.sessions;
+  const own = (id: string) => sessions.filter((s) => s.bookId === id).sort((a, b) => a.date.localeCompare(b.date));
+  const total = (list: Session[]) => list.reduce((sum, s) => sum + s.pages, 0);
+
+  const books = data.books.map((b) => {
+    if (b.status === "tbr") {
+      sessions = sessions.filter((s) => s.bookId !== b.id);
+      return { ...b, trackedFrom: undefined };
+    }
+    const old = b.trackedFrom as OldStart | undefined;
+    if (old && old.jump !== undefined) {
+      if (old.jump > 0) {
+        const jump = old.jump;
+        sessions = sessions
+          .map((s) => (s.bookId === b.id && s.date === old.date ? { ...s, pages: s.pages - jump } : s))
+          .filter((s) => s.pages > 0);
+        return { ...b, trackedFrom: { date: old.date, page: jump } };
+      }
+      // Started from a page the form set. That page was not kept, so it is where the book stands less what was read since.
+      const page = b.status === "completed" ? 0 : Math.max(0, b.currentPage - total(own(b.id)));
+      return { ...b, trackedFrom: { date: old.date, page } };
+    }
+    const log = own(b.id);
+    if (!old && (b.status === "reading" || b.status === "dnf") && log.length > 0) {
+      const [first, ...rest] = log;
+      sessions = sessions.filter((s) => s !== first);
+      return { ...b, trackedFrom: { date: first.date, page: Math.max(0, b.currentPage - total(rest)) } };
+    }
+    return b;
+  });
+  return { ...data, books, sessions };
+}
+
 /** Brings a stored library up to the current version. Each step runs once, since the version is saved with it. */
 export function migrate(data: LibrarySnapshot): LibrarySnapshot {
   let next = data;
   if ((next.version ?? 1) < 2) next = removeSamples(next);
   if ((next.version ?? 1) < 3) next = clearStampedDates(next);
+  if ((next.version ?? 1) < 4) next = separateStartingPoints(next);
   return { ...next, version: CURRENT_VERSION };
 }
 

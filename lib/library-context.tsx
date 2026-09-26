@@ -19,7 +19,8 @@ interface LibraryContextValue {
   deleteBook: (id: string) => Promise<void>;
   /** Moves the bookmark and logs the page difference as today's reading. */
   /** `base` is the book as just saved, when a save in the same step changed it. */
-  setProgress: (id: string, page: number, base?: Book) => Promise<void>;
+  /** Resolves with the pages moved and the pages logged, or null when nothing changed. */
+  setProgress: (id: string, page: number, base?: Book) => Promise<{ delta: number; log: number } | null>;
   addHighlight: (input: NewHighlight) => Promise<void>;
   deleteHighlight: (id: string) => Promise<void>;
   setGoal: (goal: ReadingGoal) => Promise<void>;
@@ -83,10 +84,13 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
   const updateBook = useCallback(
     async (id: string, patch: BookPatch) => {
-      await repo.updateBook(id, patch);
+      // Back to Want to read means not read yet: the book's reading days go, and tracking starts over.
+      const unread = patch.status === "tbr" && data?.books.find((b) => b.id === id)?.status !== "tbr";
+      await repo.updateBook(id, unread ? { ...patch, trackedFrom: undefined } : patch);
+      if (unread) await repo.deleteSessions(id);
       await refresh();
     },
-    [repo, refresh],
+    [data, repo, refresh],
   );
 
   const deleteBook = useCallback(
@@ -100,15 +104,16 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const setProgress = useCallback(
     async (id: string, page: number, base?: Book) => {
       const book = base ?? data?.books.find((b) => b.id === id);
-      if (!book) return;
+      if (!book) return null;
       const date = today();
       const logged = data?.sessions.reduce((sum, s) => (s.bookId === id ? sum + s.pages : sum), 0) ?? 0;
       const change = progressPatch(book, page, date, logged);
-      if (!change) return;
+      if (!change) return null;
 
       await repo.updateBook(id, change.patch);
       if (change.log !== 0) await repo.logPages(id, date, change.log);
       await refresh();
+      return { delta: change.delta, log: change.log };
     },
     [data, repo, refresh],
   );

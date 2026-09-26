@@ -155,7 +155,7 @@ export function CurrentlyReading({ books, sessions }: { books: Book[]; sessions:
               {stats
                 ? paceText(stats)
                 : book.currentPage > 0
-                  ? "Your pace shows once you log another day of reading."
+                  ? "Your pace shows once you log some reading."
                   : "Drag the slider or type a page to log today's reading."}
             </p>
           </div>

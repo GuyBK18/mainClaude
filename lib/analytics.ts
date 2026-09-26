@@ -44,7 +44,8 @@ export function analyticsFor(data: LibrarySnapshot, range: Range, todayISO: stri
 
   // A finished book was read in full. Pages it has no logged reading for count when it was finished.
   const logged = loggedByBook(past);
-  const unlogged = finished.map((b) => ({ b, pages: Math.max(0, b.pageCount - (logged.get(b.id) ?? 0)) }));
+  // Pages before tracking began were read at unknown times, so they count in all time only.
+  const unlogged = finished.map((b) => ({ b, pages: Math.max(0, b.pageCount - (logged.get(b.id) ?? 0) - (b.trackedFrom?.page ?? 0)) }));
 
   const loggedPages = sessions.reduce((sum, s) => sum + s.pages, 0);
   // All time also counts pages of unfinished books that were never logged, as the dashboard does.
