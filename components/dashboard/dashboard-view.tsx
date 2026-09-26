@@ -4,11 +4,11 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useLibrary } from "@/lib/library-context";
-import { goalProgress, kpis } from "@/lib/stats";
+import { completedIn, goalProgress, kpis } from "@/lib/stats";
 import { daysBetween, formatDate, today } from "@/lib/dates";
 import { easeOut } from "@/lib/motion";
 import { LoadingBlock, PageHeader, SectionHeading } from "@/components/shell/page-header";
-import { BookCover } from "@/components/book/book-cover";
+import { FinishedGrid } from "@/components/book/finished-grid";
 import { CurrentlyReading } from "./currently-reading";
 import { GoalTracker } from "./goal-tracker";
 import { KpiCards } from "./kpi-cards";
@@ -24,10 +24,8 @@ export function DashboardView() {
     if (!data) return null;
     const year = Number(todayISO.slice(0, 4));
     const target = data.goals.find((g) => g.year === year)?.target ?? 24;
-    const recent = data.books
-      .filter((b) => b.status === "completed" && b.finishedAt)
-      .sort((a, b) => b.finishedAt!.localeCompare(a.finishedAt!))
-      .slice(0, 6);
+    // Every book finished this year, dated by day or by year only.
+    const recent = completedIn(data.books, year);
     return {
       reading: data.books
         .filter((b) => b.status === "reading")
@@ -68,6 +66,13 @@ export function DashboardView() {
         <motion.div variants={fadeUp} className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <div className="lg:col-span-8">
             <CurrentlyReading books={reading} />
+            {/* With nothing on the nightstand, this year's books fill the space instead of a section below. */}
+            {reading.length === 0 && recent.length > 0 && (
+              <div className="mt-10">
+                <SectionHeading title={`Read in ${todayISO.slice(0, 4)}`} />
+                <FinishedGrid books={recent} />
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-4 lg:col-span-4">
             <GoalTracker {...goal} daysLeft={daysLeft} />
@@ -79,29 +84,17 @@ export function DashboardView() {
           <ReadingHeatmap sessions={data.sessions} todayISO={todayISO} />
         </motion.div>
 
-        {recent.length > 0 && (
+        {reading.length > 0 && recent.length > 0 && (
           <motion.section variants={fadeUp} className="mt-12">
             <SectionHeading
-              title="Recently finished"
+              title={`Read in ${todayISO.slice(0, 4)}`}
               meta={
-                <Link href="/library" className="underline-offset-4 hover:text-foreground hover:underline">
-                  All books
+                <Link href="/analytics" className="underline-offset-4 hover:text-foreground hover:underline">
+                  Stats
                 </Link>
               }
             />
-            <div className="grid grid-cols-3 gap-x-4 gap-y-8 sm:grid-cols-6 sm:gap-x-6">
-              {recent.map((book) => (
-                <Link key={book.id} href={`/book/${book.id}`} className="group block">
-                  <BookCover
-                    book={book}
-                    elevated
-                    className="transition-transform duration-300 ease-(--ease-out) [@media(hover:hover)]:group-hover:-translate-y-1"
-                  />
-                  <p className="mt-3 truncate font-serif text-[15px] leading-tight">{book.title}</p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{formatDate(book.finishedAt)}</p>
-                </Link>
-              ))}
-            </div>
+            <FinishedGrid books={recent} />
           </motion.section>
         )}
       </motion.div>

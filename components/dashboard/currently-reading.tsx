@@ -27,7 +27,7 @@ export function CurrentlyReading({ books }: { books: Book[] }) {
 
   if (!book) {
     return (
-      <Card className="flex min-h-[340px] flex-col items-start justify-end p-8">
+      <Card className="flex flex-col items-start justify-end p-8">
         <p className="label-meta mb-3">Currently reading</p>
         <p className="font-serif text-2xl">Nothing on the nightstand.</p>
         <p className="mt-2 text-sm text-muted-foreground">

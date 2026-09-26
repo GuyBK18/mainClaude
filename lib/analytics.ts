@@ -71,6 +71,7 @@ export function analyticsFor(data: LibrarySnapshot, range: Range, todayISO: stri
 
   return {
     start,
+    finished,
     finishedCount: finished.length,
     pages,
     // Only logged reading has days.

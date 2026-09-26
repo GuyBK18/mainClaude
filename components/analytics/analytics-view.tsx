@@ -1,5 +1,6 @@
 "use client";
 
+import { FinishedGrid } from "@/components/book/finished-grid";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useLibrary } from "@/lib/library-context";
@@ -75,6 +76,13 @@ export function AnalyticsView() {
             <Stat label="Average length" value={a.averageLength === null ? "—" : String(a.averageLength)} unit="pages" />
             <Stat label="Median time" value={a.medianDays === null ? "—" : String(Math.round(a.medianDays))} unit="days a book" />
           </div>
+
+          {a.finishedCount > 0 && (
+            <section className="mb-8">
+              <p className="label-meta mb-6">Books read · {RANGE_LABEL[range]}</p>
+              <FinishedGrid books={a.finished} />
+            </section>
+          )}
 
           {a.finishedCount === 0 ? (
             <Card className="py-20 text-center">
