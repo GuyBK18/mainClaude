@@ -23,6 +23,7 @@ import {
   type Placed,
   type Slab,
 } from "@/lib/leaning-shelf";
+import { pageFaces } from "@/lib/book-shape";
 import { BookCover } from "@/components/book/book-cover";
 import { shelfBoard } from "./shelf-board";
 
@@ -174,6 +175,7 @@ function LeaningBook({ book, slab, ref }: { book: Book; slab: Slab; ref: (el: HT
   const palette = read && read.url === book.cover.url ? read.palette : book.cover.palette;
   const [ground, ink, accent] = palette;
   const face = "absolute left-1/2 top-1/2 [backface-visibility:hidden]";
+  const pages = pageFaces(book.format, W, H);
 
   return (
     <div ref={ref} className="absolute left-0 [transform-style:preserve-3d]" style={{ bottom: PLINTH, width: W, height: H }}>
@@ -215,8 +217,8 @@ function LeaningBook({ book, slab, ref }: { book: Book; slab: Slab; ref: (el: HT
         className={face}
         style={{
           width: T,
-          height: H - 6,
-          transform: `translate(-50%, -50%) rotateY(90deg) translateZ(${W / 2 - 2}px)`,
+          height: pages.foreEdge.height,
+          transform: pages.foreEdge.transform,
           background: "repeating-linear-gradient(90deg, #efeadf 0 1px, #e3ddd0 1px 2px)",
         }}
       />
@@ -225,9 +227,9 @@ function LeaningBook({ book, slab, ref }: { book: Book; slab: Slab; ref: (el: HT
       <div
         className={face}
         style={{
-          width: W - 4,
+          width: pages.top.width,
           height: T,
-          transform: `translate(-50%, -50%) rotateX(90deg) translateZ(${H / 2 - 2}px)`,
+          transform: pages.top.transform,
           background: "repeating-linear-gradient(0deg, #f1ece2 0 1px, #e2dccf 1px 2px)",
         }}
       />
