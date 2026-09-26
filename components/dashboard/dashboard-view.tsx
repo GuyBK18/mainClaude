@@ -65,7 +65,7 @@ export function DashboardView() {
       >
         <motion.div variants={fadeUp} className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <div className="lg:col-span-8">
-            <CurrentlyReading books={reading} />
+            <CurrentlyReading books={reading} sessions={data.sessions} />
             {/* With nothing on the nightstand, this year's books fill the space instead of a section below. */}
             {reading.length === 0 && recent.length > 0 && (
               <div className="mt-10">

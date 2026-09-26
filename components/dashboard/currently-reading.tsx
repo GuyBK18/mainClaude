@@ -4,24 +4,72 @@ import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import type { Book } from "@/types/reading";
-import { daysBetween, today } from "@/lib/dates";
+import type { Book, ReadingSession } from "@/types/reading";
+import { daysBetween, formatShortDate, today } from "@/lib/dates";
+import { readingDays, readingPace, recentDays } from "@/lib/reading-pace";
 import { easeOut } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { ProgressControl } from "@/components/book/progress-control";
 import { BookCover } from "@/components/book/book-cover";
 import { AmbientGlow } from "@/components/book/ambient-glow";
+import { CatalogRating } from "@/components/book/rating";
 
-function pace(book: Book) {
-  if (!book.startedAt || book.currentPage === 0) return null;
-  const days = Math.max(1, daysBetween(book.startedAt, today()));
-  const perDay = book.currentPage / days;
-  const left = Math.ceil((book.pageCount - book.currentPage) / perDay);
-  return { perDay: Math.round(perDay), left };
+/** Rating, genre, series and start date in one quiet line. */
+function BookFacts({ book, now }: { book: Book; now: string }) {
+  const facts = [
+    book.goodreadsRating !== null && <CatalogRating key="r" book={book} className="text-foreground" />,
+    book.genres[0],
+    book.series && `${book.series.name} #${book.series.position}`,
+    book.startedAt && `Started ${formatShortDate(book.startedAt)} · day ${daysBetween(book.startedAt, now) + 1}`,
+  ].filter(Boolean);
+  if (facts.length === 0) return null;
+  return (
+    <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[13px] text-muted-foreground">
+      {facts.map((f, i) => (
+        <span key={i}>{f}</span>
+      ))}
+    </div>
+  );
 }
 
-export function CurrentlyReading({ books }: { books: Book[] }) {
+function lastRead(date: string, now: string) {
+  const ago = daysBetween(date, now);
+  return ago === 0 ? "today" : ago === 1 ? "yesterday" : `${ago} days ago`;
+}
+
+/** Pages read on each of the last 14 days. Hidden until the book has a logged day. */
+function RecentReading({ book, sessions, now }: { book: Book; sessions: ReadingSession[]; now: string }) {
+  const { start } = readingDays(sessions, book.id);
+  if (!start) return null;
+  const days = recentDays(sessions, book.id, now);
+  const last = days.findLast((d) => d.pages > 0);
+  const max = Math.max(1, ...days.map((d) => d.pages));
+  return (
+    <div className="mt-6">
+      <div className="flex h-11 items-end gap-1" aria-hidden>
+        {days.map((d) => (
+          <i
+            key={d.date}
+            title={`${formatShortDate(d.date)}: ${d.pages} pages`}
+            className={cn("flex-1 rounded-[1px] bg-foreground", d.pages ? "opacity-75" : "opacity-10")}
+            style={{ height: d.pages ? `${Math.max(8, (d.pages / max) * 100)}%` : "2px" }}
+          />
+        ))}
+      </div>
+      <p className="mt-2 flex justify-between gap-4 text-xs text-muted-foreground">
+        <span>Last 14 days</span>
+        <span>
+          {last
+            ? `Last read ${lastRead(last.date, now)}, ${last.pages} ${last.pages === 1 ? "page" : "pages"}`
+            : `Started tracking ${lastRead(start, now)}`}
+        </span>
+      </p>
+    </div>
+  );
+}
+
+export function CurrentlyReading({ books, sessions }: { books: Book[]; sessions: ReadingSession[] }) {
   const [activeId, setActiveId] = useState(books[0]?.id);
   const book = books.find((b) => b.id === activeId) ?? books[0];
 
@@ -37,7 +85,8 @@ export function CurrentlyReading({ books }: { books: Book[] }) {
     );
   }
 
-  const stats = pace(book);
+  const now = today();
+  const stats = readingPace(book, sessions, now);
 
   return (
     <Card className="relative isolate h-full overflow-hidden">
@@ -95,6 +144,8 @@ export function CurrentlyReading({ books }: { books: Book[] }) {
                 <ArrowUpRight className="mt-2 size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
               </Link>
               <p className="mt-2 text-[15px] text-muted-foreground">{book.author}</p>
+              <BookFacts book={book} now={now} />
+              <RecentReading book={book} sessions={sessions} now={now} />
             </motion.div>
           </AnimatePresence>
 
@@ -103,7 +154,9 @@ export function CurrentlyReading({ books }: { books: Book[] }) {
             <p className="mt-4 text-sm text-muted-foreground">
               {stats
                 ? `About ${stats.perDay} pages a day. At this pace you finish in ${stats.left} ${stats.left === 1 ? "day" : "days"}.`
-                : "Drag the slider or type a page to log today's reading."}
+                : book.currentPage > 0
+                  ? "Your pace shows once you log another day of reading."
+                  : "Drag the slider or type a page to log today's reading."}
             </p>
           </div>
 
