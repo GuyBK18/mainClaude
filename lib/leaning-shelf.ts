@@ -13,13 +13,16 @@ export interface LeaningSettings {
   mode: LeaningMode;
   /** Degrees each book is turned from facing the reader. */
   angle: number;
-  /** Pixels of each cover left in view before the next book's spine. */
+  /**
+   * Pixels of each cover left in view before the next book's spine. The books lean in parallel,
+   * so this is also the space between them. Shown as "Space between books".
+   */
   reveal: number;
 }
 
 export const DEFAULT_LEANING: LeaningSettings = { mode: "turn", angle: 62, reveal: 14 };
 export const ANGLE_RANGE = { min: 40, max: 75 } as const;
-export const REVEAL_RANGE = { min: 0, max: 40 } as const;
+export const REVEAL_RANGE = { min: 0, max: 80 } as const;
 
 const clampTo = (v: number, { min, max }: { min: number; max: number }) => Math.min(max, Math.max(min, Math.round(v)));
 

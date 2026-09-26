@@ -88,7 +88,7 @@ export function LeaningSettingsButton({
           onValueChange={(angle) => onChange({ ...settings, angle })}
         />
         <Setting
-          label="Cover showing"
+          label="Space between books"
           value={`${settings.reveal} px`}
           range={REVEAL_RANGE}
           current={settings.reveal}

@@ -114,6 +114,8 @@ describe("leaning shelf", () => {
     expect(DEFAULT_LEANING).toEqual({ mode: "turn", angle: 62, reveal: 14 });
     expect(toLeaningSettings(null)).toEqual(DEFAULT_LEANING);
     expect(toLeaningSettings({ mode: "slide", angle: 90, reveal: -3 })).toEqual({ mode: "slide", angle: 75, reveal: 0 });
+    expect(toLeaningSettings({ mode: "turn", angle: 62, reveal: 80 }).reveal).toBe(80);
+    expect(toLeaningSettings({ mode: "turn", angle: 62, reveal: 200 }).reveal).toBe(80);
   });
 
   it("wraps books into rows that fit the width", () => {
