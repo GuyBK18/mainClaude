@@ -10,7 +10,7 @@ import type { SortDir, SortKey } from "@/lib/library-filter";
 import { layoutSpring } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { BookCover } from "@/components/book/book-cover";
-import { RatingStars } from "@/components/book/rating";
+import { CatalogRating } from "@/components/book/rating";
 
 const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
   { key: "title", label: "Title" },
@@ -108,11 +108,7 @@ export function LibraryTable({
                 </td>
                 <td className="tabular px-3 text-right">{book.pageCount.toLocaleString("en")}</td>
                 <td className="px-3">
-                  {book.personalRating === null ? (
-                    <span className="text-muted-foreground">—</span>
-                  ) : (
-                    <RatingStars value={book.personalRating} size="size-3" />
-                  )}
+                  <CatalogRating book={book} />
                 </td>
                 <td className="px-3 text-muted-foreground">{STATUS_LABEL[book.status]}</td>
               </motion.tr>

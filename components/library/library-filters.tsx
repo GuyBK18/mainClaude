@@ -10,12 +10,13 @@ import { snappySpring } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
+// Goodreads averages mostly fall between 3.5 and 4.5, so the steps are finer there.
 const RATINGS = [
   { value: 0, label: "Any rating" },
-  { value: 3, label: "3 stars and up" },
-  { value: 4, label: "4 stars and up" },
-  { value: 4.5, label: "4.5 stars and up" },
-  { value: 5, label: "5 stars only" },
+  { value: 3.5, label: "3.5 and up" },
+  { value: 4, label: "4.0 and up" },
+  { value: 4.25, label: "4.25 and up" },
+  { value: 4.5, label: "4.5 and up" },
 ];
 
 function FilterButton({ label, count, children }: { label: string; count: number; children: React.ReactNode }) {

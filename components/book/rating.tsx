@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Star } from "lucide-react";
+import type { Book } from "@/types/reading";
+import { RATING_SOURCE_LABEL } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 function StarGlyph({ fill, size }: { fill: number; size: string }) {
@@ -23,6 +25,22 @@ export function RatingStars({ value, size = "size-3.5", className }: { value: nu
       {Array.from({ length: 5 }, (_, i) => (
         <StarGlyph key={i} fill={Math.max(0, Math.min(1, value - i))} size={size} />
       ))}
+    </span>
+  );
+}
+
+/**
+ * The public average rating, usually Goodreads, as one star and the number. The exact number
+ * tells 4.1 from 4.4, which half-star glyphs would round together. A dash when there is none.
+ */
+export function CatalogRating({ book, className }: { book: Pick<Book, "goodreadsRating" | "ratingSource" | "ratingsCount">; className?: string }) {
+  if (book.goodreadsRating === null) return <span className={cn("text-muted-foreground", className)}>—</span>;
+  const source = RATING_SOURCE_LABEL[book.ratingSource ?? "goodreads"];
+  const count = book.ratingsCount ? `, ${book.ratingsCount.toLocaleString("en")} ratings` : "";
+  return (
+    <span className={cn("tabular inline-flex items-center gap-1", className)} title={`${book.goodreadsRating.toFixed(2)} on ${source}${count}`}>
+      <Star className="size-3 stroke-[1.5]" fill="currentColor" aria-hidden />
+      <span aria-label={`${book.goodreadsRating.toFixed(2)} out of 5 on ${source}`}>{book.goodreadsRating.toFixed(2)}</span>
     </span>
   );
 }

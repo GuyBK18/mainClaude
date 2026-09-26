@@ -45,7 +45,7 @@ lib/library-context.tsx             React provider the UI reads from
 
 To move to an API or a database, write a class that implements `LibraryRepository` and return it from `getRepository()`. Nothing in the UI imports the LocalStorage class directly.
 
-`Book` also stores `description` (the publisher's text), `ratingSource` and `ratingsCount` for imported books. `goodreadsRating` keeps its name from the spec and holds the public average; `ratingSource` says which catalog it came from.
+`Book` also stores `description` (the publisher's text), `ratingSource` and `ratingsCount` for imported books. `goodreadsRating` keeps its name from the spec and holds the public average; `ratingSource` says which catalog it came from. Across the app, "Rating" means that public average: the table column, the sort, the filter, and the line under a book you have not finished in Grid. Your own rating shows where it is about your reading: "Your rating" on the book page and in the form, the stars under a finished book in Grid, and "Your avg rating" on the dashboard.
 
 Every save stamps the library with `updatedAt`. The file backup uses it to tell which copy is newer.
 

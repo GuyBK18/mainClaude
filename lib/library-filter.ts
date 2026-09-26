@@ -9,7 +9,7 @@ export interface LibraryFilters {
   query: string;
   genres: Genre[];
   lengths: LengthBucket[];
-  /** Minimum personal rating; 0 means any. */
+  /** Minimum public (Goodreads) rating; 0 means any. Books without one are left out. */
   minRating: number;
 }
 
@@ -22,7 +22,7 @@ export function filterBooks(books: Book[], f: LibraryFilters) {
     if (q && !`${b.title} ${b.author} ${b.series?.name ?? ""}`.toLowerCase().includes(q)) return false;
     if (f.genres.length && !b.genres.some((g) => f.genres.includes(g))) return false;
     if (f.lengths.length && !f.lengths.some((l) => LENGTH_BUCKETS[l].test(b.pageCount))) return false;
-    if (f.minRating > 0 && (b.personalRating ?? 0) < f.minRating) return false;
+    if (f.minRating > 0 && (b.goodreadsRating ?? 0) < f.minRating) return false;
     return true;
   });
 }
@@ -68,11 +68,11 @@ export function sortBooks(books: Book[], key: SortKey, dir: SortDir) {
         r = a.pageCount - b.pageCount;
         break;
       case "rating":
-        // Unrated books sink to the bottom in both directions.
-        if (a.personalRating === null || b.personalRating === null) {
-          return (a.personalRating === null ? 1 : 0) - (b.personalRating === null ? 1 : 0);
+        // By the public (Goodreads) rating. Books without one sink to the bottom in both directions.
+        if (a.goodreadsRating === null || b.goodreadsRating === null) {
+          return (a.goodreadsRating === null ? 1 : 0) - (b.goodreadsRating === null ? 1 : 0);
         }
-        r = a.personalRating - b.personalRating;
+        r = a.goodreadsRating - b.goodreadsRating;
         break;
     }
     return r * sign || byTitle(a, b);

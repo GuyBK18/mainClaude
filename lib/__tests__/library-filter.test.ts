@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Book } from "@/types/reading";
-import { sortBooks } from "@/lib/library-filter";
+import { DEFAULT_FILTERS, filterBooks, sortBooks } from "@/lib/library-filter";
 
 const book = (title: string, series?: [string, number]): Book => ({
   id: title,
@@ -58,5 +58,25 @@ describe("sort by series", () => {
       "Standalone A",
       "Standalone B",
     ]);
+  });
+});
+
+describe("rating", () => {
+  // Your own rating and Goodreads' disagree, so a test can tell which one is used.
+  const rated = (title: string, goodreads: number | null, yours: number | null): Book => ({
+    ...book(title),
+    goodreadsRating: goodreads,
+    personalRating: yours,
+  });
+  const books = [rated("Middling", 3.9, 5), rated("Loved", 4.6, 2), rated("Unknown", null, 4), rated("Good", 4.2, null)];
+
+  it("sorts by the Goodreads rating, with books that have none last either way", () => {
+    expect(titles(sortBooks(books, "rating", "desc"))).toEqual(["Loved", "Good", "Middling", "Unknown"]);
+    expect(titles(sortBooks(books, "rating", "asc"))).toEqual(["Middling", "Good", "Loved", "Unknown"]);
+  });
+
+  it("filters by the Goodreads rating and leaves out books that have none", () => {
+    expect(titles(filterBooks(books, { ...DEFAULT_FILTERS, minRating: 4 }))).toEqual(["Loved", "Good"]);
+    expect(titles(filterBooks(books, { ...DEFAULT_FILTERS, minRating: 0 }))).toHaveLength(4);
   });
 });

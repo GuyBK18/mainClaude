@@ -30,7 +30,7 @@ export function KpiCards({
       <Tile label="Books" value={formatNumber(totalBooks)} detail="finished, all time" />
       <Tile label="Pages" value={formatNumber(totalPages)} detail="read, all time" />
       <Tile
-        label="Avg rating"
+        label="Your avg rating"
         value={averageRating === null ? "—" : averageRating.toFixed(2)}
         detail={
           <span className="flex items-center gap-2">

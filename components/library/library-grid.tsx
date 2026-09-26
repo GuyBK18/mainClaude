@@ -7,7 +7,7 @@ import { STATUS_LABEL } from "@/lib/labels";
 import { layoutSpring, swapVariants, type Direction } from "@/lib/motion";
 import { progressOf } from "@/lib/stats";
 import { BookCover } from "@/components/book/book-cover";
-import { RatingStars } from "@/components/book/rating";
+import { CatalogRating, RatingStars } from "@/components/book/rating";
 
 function Meta({ book }: { book: Book }) {
   if (book.status === "reading") {
@@ -29,7 +29,18 @@ function Meta({ book }: { book: Book }) {
       </div>
     );
   }
-  return <p className="mt-2.5 font-display text-[11px] text-muted-foreground">{STATUS_LABEL[book.status]} · {book.pageCount} pp</p>;
+  // Before reading, the public rating is the one that helps. Finished books show your own stars.
+  return (
+    <p className="mt-2.5 flex items-center gap-1 font-display text-[11px] text-muted-foreground">
+      {STATUS_LABEL[book.status]} · {book.pageCount} pp
+      {book.goodreadsRating !== null && (
+        <>
+          {" "}
+          · <CatalogRating book={book} />
+        </>
+      )}
+    </p>
+  );
 }
 
 const item = swapVariants({ opacity: 0, scale: 0.96 });
