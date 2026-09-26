@@ -62,7 +62,7 @@ function RecentReading({ book, sessions, now }: { book: Book; sessions: ReadingS
         <span>
           {last
             ? `Last read ${lastRead(last.date, now)}, ${last.pages} ${last.pages === 1 ? "page" : "pages"}`
-            : `Started tracking ${lastRead(start, now)}`}
+            : `Started tracking ${lastRead(start, now)}${book.trackedFrom?.page ? ` at page ${book.trackedFrom.page}` : ""}`}
         </span>
       </p>
     </div>
