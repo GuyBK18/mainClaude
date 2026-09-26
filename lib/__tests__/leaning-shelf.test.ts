@@ -79,10 +79,10 @@ describe("spine thickness", () => {
 
   it("follows page count past 600 pages", () => {
     // Red Rising Saga: Iron Gold, Light Bringer, Dark Age.
-    expect(t(600)).toBe(60);
-    expect(t(680)).toBe(68);
-    expect(t(757)).toBe(76);
-    expect(t(1200) / t(600)).toBe(2);
+    expect(t(600)).toBe(38);
+    expect(t(680)).toBe(43);
+    expect(t(757)).toBe(47);
+    expect(t(800) / t(400)).toBe(2);
   });
 
   it("keeps a readable spine for short books and a bound for mistyped counts", () => {

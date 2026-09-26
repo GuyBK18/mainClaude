@@ -43,27 +43,29 @@ export interface Slab {
 const HEIGHT: Record<BookFormat, number> = { hardcover: 212, paperback: 192, ebook: 196, audiobook: 200 };
 
 /**
- * Thickness grows with page count, one pixel per ten pages, so a book twice as long is
- * twice as thick. Below MIN_PAGES a spine is too thin for its title, so those books share
- * the thinnest spine. MAX_PAGES only stops a mistyped count from filling a whole row. A
- * missing count gets a typical length, not the thinnest spine.
+ * Thickness grows with page count, one pixel per 16 pages, so a book twice as long is
+ * twice as thick. At the paperback's 192 px for about 20 cm, that is close to real paper.
+ * Below MIN_PAGES a spine is too thin for its title, so those books share the thinnest spine.
+ * MAX_PAGES only stops a mistyped count from filling a whole row. A missing count gets a
+ * typical length, not the thinnest spine.
  */
-export const MIN_PAGES = 160;
+export const MIN_PAGES = 192;
 export const MAX_PAGES = 1500;
 const TYPICAL_PAGES = 320;
+const PAGES_PER_PX = 16;
 
 export function spinePages(pageCount: number) {
   const pages = Number.isFinite(pageCount) && pageCount > 0 ? pageCount : TYPICAL_PAGES;
   return Math.min(MAX_PAGES, Math.max(MIN_PAGES, pages));
 }
 
-/** Height follows format, thickness follows page count. Spines are the face you see most here, so they run thicker than on the upright shelf. */
+/** Height follows format, thickness follows page count. */
 export function slabOf(book: Pick<Book, "format" | "pageCount">): Slab {
   const h = HEIGHT[book.format];
   return {
     w: Math.round(h * 0.655),
     h,
-    t: Math.round((spinePages(book.pageCount) / 10) * (book.format === "hardcover" ? 1.08 : 1)),
+    t: Math.round((spinePages(book.pageCount) / PAGES_PER_PX) * (book.format === "hardcover" ? 1.08 : 1)),
   };
 }
 
