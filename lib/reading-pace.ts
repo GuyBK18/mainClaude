@@ -24,7 +24,15 @@ export function readingPace(book: Book, sessions: ReadingSession[], now: string)
   const pages = days.reduce((sum, s) => sum + s.pages, 0);
   if (!start || pages <= 0) return null;
   const perDay = pages / Math.max(1, daysBetween(start, now));
-  return { perDay: Math.max(1, Math.round(perDay)), left: Math.ceil((book.pageCount - book.currentPage) / perDay) };
+  return { perDay, left: Math.max(0, Math.ceil((book.pageCount - book.currentPage) / perDay)) };
+}
+
+const plural = (n: number, word: string) => `${n.toLocaleString("en")} ${word}${n === 1 ? "" : "s"}`;
+
+/** The pace line under the progress slider. */
+export function paceText({ perDay, left }: { perDay: number; left: number }) {
+  const rate = perDay < 1 ? "Under a page a day." : `About ${plural(Math.round(perDay), "page")} a day.`;
+  return `${rate} At this pace you finish ${left === 0 ? "today" : `in ${plural(left, "day")}`}.`;
 }
 
 /** Pages read on each of the last `count` days, oldest first, leaving out the starting point. */

@@ -22,13 +22,29 @@ export function goalProgress(books: Book[], target: number, todayISO: string) {
   return { year, done, target, expected, ahead: done - expected };
 }
 
-export function kpis(books: Book[]) {
+/** Pages logged for each book, all time. */
+export function loggedByBook(sessions: ReadingSession[]) {
+  const map = new Map<string, number>();
+  for (const s of sessions) map.set(s.bookId, (map.get(s.bookId) ?? 0) + s.pages);
+  return map;
+}
+
+/**
+ * Pages read in each book, all time: where the book stands, or what was logged for it when
+ * that is more, as for a book moved back to Want to read after some reading.
+ */
+export function allTimePages(books: Book[], sessions: ReadingSession[]) {
+  const logged = loggedByBook(sessions);
+  return books.reduce((sum, b) => sum + Math.max(pagesRead(b), logged.get(b.id) ?? 0), 0);
+}
+
+export function kpis(books: Book[], sessions: ReadingSession[] = []) {
   const completed = books.filter((b) => b.status === "completed");
   const rated = books.filter((b) => b.personalRating !== null);
   const avg = rated.length ? rated.reduce((s, b) => s + (b.personalRating ?? 0), 0) / rated.length : null;
   return {
     totalBooks: completed.length,
-    totalPages: books.reduce((s, b) => s + pagesRead(b), 0),
+    totalPages: allTimePages(books, sessions),
     averageRating: avg,
     ratedCount: rated.length,
   };
@@ -69,6 +85,13 @@ export function heatmap(sessions: ReadingSession[], todayISO: string, weeks = 53
     grid.push(column);
   }
   return grid;
+}
+
+/** Pages and reading days from today back 364 days, one full year. */
+export function lastYear(sessions: ReadingSession[], todayISO: string) {
+  const from = addDays(todayISO, -364);
+  const inYear = [...pagesByDay(sessions)].filter(([date, p]) => date >= from && date <= todayISO && p > 0);
+  return { pages: inYear.reduce((sum, [, p]) => sum + p, 0), days: inYear.length };
 }
 
 export function streaks(sessions: ReadingSession[], todayISO: string) {

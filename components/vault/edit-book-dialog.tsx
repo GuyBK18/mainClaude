@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { BookForm, toBookInput, validate, valuesFromBook, type BookFormValues } from "@/components/library/book-form";
 
 export function EditBookDialog({ book, open, onOpenChange }: { book: Book; open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { updateBook } = useLibrary();
+  const { updateBook, setProgress } = useLibrary();
   const [values, setValues] = useState<BookFormValues>(() => valuesFromBook(book));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,7 +21,11 @@ export function EditBookDialog({ book, open, onOpenChange }: { book: Book; open:
       return;
     }
     setBusy(true);
-    await updateBook(book.id, await toBookInput(values, book));
+    const input = await toBookInput(values, book);
+    // A new page on a book still being read is reading, logged the same way as the slider.
+    const moved = input.status === book.status && (book.status === "reading" || book.status === "dnf") && input.currentPage !== book.currentPage;
+    await updateBook(book.id, moved ? { ...input, currentPage: book.currentPage } : input);
+    if (moved) await setProgress(book.id, input.currentPage, { ...book, ...input, currentPage: book.currentPage });
     setBusy(false);
     onOpenChange(false);
   };

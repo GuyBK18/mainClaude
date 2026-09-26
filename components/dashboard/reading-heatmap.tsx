@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReadingSession } from "@/types/reading";
-import { HEAT_STEPS, heatmap, streaks, type HeatCell } from "@/lib/stats";
+import { HEAT_STEPS, heatmap, lastYear, streaks, type HeatCell } from "@/lib/stats";
 import { formatDate } from "@/lib/dates";
 import { Card } from "@/components/ui/card";
 
@@ -14,10 +14,7 @@ type Hover = { cell: HeatCell; x: number; y: number };
 export function ReadingHeatmap({ sessions, todayISO }: { sessions: ReadingSession[]; todayISO: string }) {
   const grid = useMemo(() => heatmap(sessions, todayISO, WEEKS), [sessions, todayISO]);
   const streak = useMemo(() => streaks(sessions, todayISO), [sessions, todayISO]);
-  const yearPages = useMemo(
-    () => grid.flat().reduce((sum, c) => sum + c.pages, 0),
-    [grid],
-  );
+  const year = useMemo(() => lastYear(sessions, todayISO), [sessions, todayISO]);
   const scroller = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<Hover | null>(null);
@@ -46,7 +43,7 @@ export function ReadingHeatmap({ sessions, todayISO }: { sessions: ReadingSessio
       <div className="mb-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <h2 className="label-meta text-foreground">Reading activity</h2>
         <p className="tabular font-display text-xs text-muted-foreground">
-          {streak.activeDays} reading days · {yearPages.toLocaleString("en")} pages in the last year · current streak{" "}
+          {year.days} reading {year.days === 1 ? "day" : "days"} · {year.pages.toLocaleString("en")} pages in the last year · current streak{" "}
           {streak.current} · longest {streak.longest}
         </p>
       </div>
@@ -72,7 +69,7 @@ export function ReadingHeatmap({ sessions, todayISO }: { sessions: ReadingSessio
             </div>
             <div
               role="img"
-              aria-label={`Reading activity for the last ${WEEKS} weeks: ${streak.activeDays} days with reading, longest streak ${streak.longest} days.`}
+              aria-label={`Reading activity for the last year: ${year.days} days with reading, longest streak ${streak.longest} days.`}
               className="grid grid-flow-col grid-rows-7 gap-[3px]"
               style={{ gridTemplateColumns: `repeat(${WEEKS}, minmax(0, 1fr))` }}
             >

@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import type { Book, ReadingSession } from "@/types/reading";
 import { daysBetween, formatShortDate, today } from "@/lib/dates";
-import { readingDays, readingPace, recentDays } from "@/lib/reading-pace";
+import { paceText, readingDays, readingPace, recentDays } from "@/lib/reading-pace";
 import { easeOut } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -153,7 +153,7 @@ export function CurrentlyReading({ books, sessions }: { books: Book[]; sessions:
             <ProgressControl key={book.id} book={book} />
             <p className="mt-4 text-sm text-muted-foreground">
               {stats
-                ? `About ${stats.perDay} pages a day. At this pace you finish in ${stats.left} ${stats.left === 1 ? "day" : "days"}.`
+                ? paceText(stats)
                 : book.currentPage > 0
                   ? "Your pace shows once you log another day of reading."
                   : "Drag the slider or type a page to log today's reading."}

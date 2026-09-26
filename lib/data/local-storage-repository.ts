@@ -2,6 +2,7 @@ import type { Book, BookPatch, NewBook, NewHighlight, ReadingGoal } from "@/type
 import { today } from "@/lib/dates";
 import { slugify, uid } from "@/lib/utils";
 import type { ChangeListener, LibraryRepository, LibrarySnapshot } from "./repository";
+import { withPages } from "@/lib/progress";
 import { CURRENT_VERSION, emptyLibrary, migrate } from "./migrations";
 
 const STORAGE_KEY = "luminaread:library:v1";
@@ -127,21 +128,9 @@ export class LocalStorageRepository implements LibraryRepository {
 
   async logPages(bookId: string, date: string, pages: number) {
     const data = this.read();
-    const existing = data.sessions.find((s) => s.bookId === bookId && s.date === date);
-    const total = (existing?.pages ?? 0) + pages;
-
-    // Moving the slider back can cancel out today's reading; drop the empty session.
-    if (total <= 0) {
-      if (existing) this.write({ ...data, sessions: data.sessions.filter((s) => s !== existing) });
-      return null;
-    }
-
-    const session = existing ? { ...existing, pages: total } : { id: uid("s"), bookId, date, pages: total };
-    const sessions = existing
-      ? data.sessions.map((s) => (s === existing ? session : s))
-      : [...data.sessions, session];
+    const sessions = withPages(data.sessions, bookId, date, pages, uid("s"));
     this.write({ ...data, sessions });
-    return session;
+    return sessions.find((s) => s.bookId === bookId && s.date === date) ?? null;
   }
 
   async setGoal(goal: ReadingGoal) {

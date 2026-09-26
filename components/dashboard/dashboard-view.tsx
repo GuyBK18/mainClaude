@@ -32,7 +32,7 @@ export function DashboardView() {
         .sort((a, b) => (b.startedAt ?? "").localeCompare(a.startedAt ?? "")),
       goal: goalProgress(data.books, target, todayISO),
       daysLeft: daysBetween(todayISO, `${year + 1}-01-01`),
-      stats: kpis(data.books),
+      stats: kpis(data.books, data.sessions),
       recent,
     };
   }, [data, todayISO]);

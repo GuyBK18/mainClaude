@@ -114,7 +114,7 @@ export function AnalyticsView() {
 
           <ChartCard
             title="Pages per month"
-            description="Pages logged each month, from the progress slider or the page field."
+            description="Pages read each month. A finished book with no logged reading counts in the month it was finished."
             chart={<MonthlyChart data={a.months} />}
             table={<DataTable head={["Month", "Pages"]} rows={a.months.map((m) => [m.label, m.pages.toLocaleString("en")])} />}
           />

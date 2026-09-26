@@ -1,6 +1,6 @@
 import type { LibrarySnapshot } from "@/lib/data";
 import { addDays } from "@/lib/dates";
-import { genreDistribution, velocity } from "@/lib/stats";
+import { allTimePages, genreDistribution, loggedByBook, velocity } from "@/lib/stats";
 
 export type Range = "year" | "12m" | "all";
 
@@ -27,7 +27,10 @@ function median(values: number[]) {
 }
 
 export function analyticsFor(data: LibrarySnapshot, range: Range, todayISO: string) {
-  const earliest = data.sessions.reduce((min, s) => (s.date < min ? s.date : min), todayISO);
+  const past = data.sessions.filter((s) => s.date <= todayISO);
+  // All time starts with the first day anything was read: a logged day, or a book's start or finish.
+  const dates = [...past.map((s) => s.date), ...data.books.flatMap((b) => [b.startedAt, b.finishedAt])];
+  const earliest = dates.reduce<string>((min, d) => (d && d < min ? d : min), todayISO);
   const start = rangeStart(range, todayISO, earliest);
   const inRange = (date?: string) => Boolean(date && date >= start && date <= todayISO);
 
@@ -40,12 +43,12 @@ export function analyticsFor(data: LibrarySnapshot, range: Range, todayISO: stri
   const sessions = data.sessions.filter((s) => inRange(s.date));
 
   // A finished book was read in full. Pages it has no logged reading for count when it was finished.
-  const logged = new Map<string, number>();
-  for (const s of data.sessions) logged.set(s.bookId, (logged.get(s.bookId) ?? 0) + s.pages);
+  const logged = loggedByBook(past);
   const unlogged = finished.map((b) => ({ b, pages: Math.max(0, b.pageCount - (logged.get(b.id) ?? 0)) }));
 
   const loggedPages = sessions.reduce((sum, s) => sum + s.pages, 0);
-  const pages = loggedPages + unlogged.reduce((sum, u) => sum + u.pages, 0);
+  // All time also counts pages of unfinished books that were never logged, as the dashboard does.
+  const pages = range === "all" ? allTimePages(data.books, past) : loggedPages + unlogged.reduce((sum, u) => sum + u.pages, 0);
   const activeDays = new Set(sessions.filter((s) => s.pages > 0).map((s) => s.date)).size;
   const speeds = velocity(finished);
 

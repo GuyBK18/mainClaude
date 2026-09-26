@@ -5,6 +5,7 @@ import type { Book, BookPatch, NewBook, NewHighlight, ReadingGoal } from "@/type
 import { getRepository, type LibrarySnapshot } from "@/lib/data";
 import { startFileBackup, type BackupStatus, type FileBackup } from "@/lib/data/file-backup";
 import { today } from "@/lib/dates";
+import { progressPatch } from "@/lib/progress";
 
 interface LibraryContextValue {
   data: LibrarySnapshot | null;
@@ -17,7 +18,8 @@ interface LibraryContextValue {
   updateBook: (id: string, patch: BookPatch) => Promise<void>;
   deleteBook: (id: string) => Promise<void>;
   /** Moves the bookmark and logs the page difference as today's reading. */
-  setProgress: (id: string, page: number) => Promise<void>;
+  /** `base` is the book as just saved, when a save in the same step changed it. */
+  setProgress: (id: string, page: number, base?: Book) => Promise<void>;
   addHighlight: (input: NewHighlight) => Promise<void>;
   deleteHighlight: (id: string) => Promise<void>;
   setGoal: (goal: ReadingGoal) => Promise<void>;
@@ -96,31 +98,16 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   );
 
   const setProgress = useCallback(
-    async (id: string, page: number) => {
-      const book = data?.books.find((b) => b.id === id);
+    async (id: string, page: number, base?: Book) => {
+      const book = base ?? data?.books.find((b) => b.id === id);
       if (!book) return;
-      const next = Math.round(Math.min(book.pageCount, Math.max(0, page)));
-      const delta = next - book.currentPage;
-      if (delta === 0) return;
-
       const date = today();
-      const patch: BookPatch = { currentPage: next };
-      const tracked = book.trackedFrom || data?.sessions.some((s) => s.bookId === id);
-      if (!tracked && delta > 0) patch.trackedFrom = { date, jump: delta };
-      if (book.status === "tbr" && next > 0) {
-        patch.status = "reading";
-        patch.startedAt = date;
-      }
-      if (next === book.pageCount) {
-        patch.status = "completed";
-        patch.finishedAt = date;
-      } else if (book.status === "completed") {
-        patch.status = "reading";
-        patch.finishedAt = undefined;
-      }
+      const logged = data?.sessions.reduce((sum, s) => (s.bookId === id ? sum + s.pages : sum), 0) ?? 0;
+      const change = progressPatch(book, page, date, logged);
+      if (!change) return;
 
-      await repo.updateBook(id, patch);
-      await repo.logPages(id, date, delta);
+      await repo.updateBook(id, change.patch);
+      if (change.log !== 0) await repo.logPages(id, date, change.log);
       await refresh();
     },
     [data, repo, refresh],
