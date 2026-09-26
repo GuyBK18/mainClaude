@@ -40,9 +40,9 @@ function lastRead(date: string, now: string) {
 
 /** Pages read on each of the last 14 days. Hidden until the book has a logged day. */
 function RecentReading({ book, sessions, now }: { book: Book; sessions: ReadingSession[]; now: string }) {
-  const { start } = readingDays(sessions, book.id);
+  const { start } = readingDays(sessions, book);
   if (!start) return null;
-  const days = recentDays(sessions, book.id, now);
+  const days = recentDays(sessions, book, now);
   const last = days.findLast((d) => d.pages > 0);
   const max = Math.max(1, ...days.map((d) => d.pages));
   return (

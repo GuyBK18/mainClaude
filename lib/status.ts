@@ -44,6 +44,6 @@ export function statusPatch(book: Book, status: ReadingStatus, dates?: ReadDates
     case "dnf":
       return { status, finishedAt: undefined };
     case "tbr":
-      return { status, currentPage: 0, startedAt: undefined, finishedAt: undefined, finishedYear: undefined };
+      return { status, currentPage: 0, startedAt: undefined, finishedAt: undefined, finishedYear: undefined, trackedFrom: undefined };
   }
 }

@@ -105,6 +105,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
 
       const date = today();
       const patch: BookPatch = { currentPage: next };
+      const tracked = book.trackedFrom || data?.sessions.some((s) => s.bookId === id);
+      if (!tracked && delta > 0) patch.trackedFrom = { date, jump: delta };
       if (book.status === "tbr" && next > 0) {
         patch.status = "reading";
         patch.startedAt = date;

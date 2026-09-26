@@ -17,11 +17,16 @@ describe("reading pace", () => {
   });
 
   it("charts the last days without the starting point", () => {
-    const days = recentDays([s("2026-09-19", 285), s("2026-09-20", 30)], "b", "2026-09-20", 3);
+    const days = recentDays([s("2026-09-19", 285), s("2026-09-20", 30)], book, "2026-09-20", 3);
     expect(days).toEqual([
       { date: "2026-09-18", pages: 0 },
       { date: "2026-09-19", pages: 0 },
       { date: "2026-09-20", pages: 30 },
     ]);
+  });
+
+  it("counts the rest of the first day once the jump is known", () => {
+    const tracked = { ...book, trackedFrom: { date: "2026-09-20", jump: 285 } };
+    expect(readingPace(tracked, [s("2026-09-20", 321)], "2026-09-20")).toEqual({ perDay: 36, left: 10 });
   });
 });

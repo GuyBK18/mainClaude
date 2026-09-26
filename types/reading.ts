@@ -71,6 +71,11 @@ export interface Book {
   addedAt: string;
   startedAt?: string;
   finishedAt?: string;
+  /**
+   * Where page tracking began: the first save's date and how many pages it jumped. That jump
+   * is where the reader already was, so the pace and the reading chart leave it out.
+   */
+  trackedFrom?: { date: string; jump: number };
   /** The year it was finished, when the exact date is not known. Ignored when finishedAt is set. */
   finishedYear?: number;
   /** Rich text (HTML) written in the vault. */
