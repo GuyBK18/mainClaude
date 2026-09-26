@@ -106,6 +106,30 @@ export function boardLines() {
   };
 }
 
+/**
+ * How far in from each side the board's back edge lands on screen, for a board whose front
+ * runs the full `width`. The camera sits over the middle of the row, so the back, further
+ * away, looks shorter, and the board's ends slant in toward the wall.
+ */
+export function boardEndInset(width: number) {
+  const front = PERSPECTIVE / (PERSPECTIVE - BOARD_DEPTH);
+  const back = PERSPECTIVE / (PERSPECTIVE + BOARD_DEPTH);
+  return Math.round((width / 2) * (1 - back / front));
+}
+
+/** Empty board left beside the first and last book of a row. */
+export const END_SPACE = 24;
+
+/**
+ * Room at each end of a row. A leaning book's left end is toward the front, where the board
+ * reaches the edge, and its right end toward the back, where the board has slanted in, so
+ * the right end needs more of the slant. Phones keep 40 px on the left for a book to slide out.
+ */
+export function rowMargins(width: number) {
+  const slant = boardEndInset(width);
+  return { left: Math.max(width < 640 ? 40 : 0, END_SPACE + Math.round(slant / 4)), right: END_SPACE + Math.round((slant * 3) / 4) };
+}
+
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
 export function smooth(a: number, b: number, p: number) {
@@ -125,14 +149,14 @@ export interface Placed {
 /**
  * Places books left to right in rows that fit `width`. Each book keeps its spine and
  * `reveal` pixels of cover in view, and sits far enough from the last one that the two
- * never overlap, however their thicknesses differ. `inset` leaves room on the left for
- * the first book to slide out.
+ * never overlap, however their thicknesses differ. `inset` and `end` are the room left
+ * empty on the left and right of each row.
  */
-export function layoutRows(slabs: Slab[], settings: LeaningSettings, width: number, inset: number): Placed[][] {
+export function layoutRows(slabs: Slab[], settings: LeaningSettings, width: number, inset: number, end = 12): Placed[][] {
   const sin = Math.sin(rad(settings.angle));
   const cos = Math.cos(rad(settings.angle));
   const projected = (s: Slab) => s.w * cos + s.t * sin;
-  const right = width - 12;
+  const right = width - end;
 
   const rows: Placed[][] = [];
   let row: Placed[] = [];

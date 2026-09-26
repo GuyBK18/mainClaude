@@ -6,8 +6,12 @@
  * pixels from the top of a row; the colors are theme tokens, so it reads the same way in
  * light and dark.
  */
-export function shelfBoard({ back, front, edge, row }: { back: number; front: number; edge: number; row: number }) {
-  const shadowEnd = Math.min(row, edge + 12);
+type BoardLines = { back: number; front: number; edge: number; row: number };
+
+const shadowEnd = ({ edge, row }: BoardLines) => Math.min(row, edge + 12);
+
+export function shelfBoard(lines: BoardLines) {
+  const { back, front, edge } = lines;
   return [
     "linear-gradient(to bottom",
     `transparent ${back}px`,
@@ -17,6 +21,18 @@ export function shelfBoard({ back, front, edge, row }: { back: number; front: nu
     `var(--shelf-edge) ${front}px ${edge - 1}px`,
     `var(--shelf-under) ${edge - 1}px ${edge}px`,
     `var(--shelf-shadow) ${edge}px`,
-    `transparent ${shadowEnd}px)`,
+    `transparent ${shadowEnd(lines)}px)`,
   ].join(", ");
+}
+
+/**
+ * Shapes the board's ends for a camera over the middle of the row: the top surface narrows
+ * by `inset` on each side toward the wall, the front face runs the full width, and the
+ * shadow on the wall is as long as the board's back.
+ */
+export function boardClip(lines: BoardLines, inset: number) {
+  const { back, front, edge } = lines;
+  const end = shadowEnd(lines);
+  const right = `calc(100% - ${inset}px)`;
+  return `polygon(${inset}px ${back}px, ${right} ${back}px, 100% ${front}px, 100% ${edge}px, ${right} ${edge}px, ${right} ${end}px, ${inset}px ${end}px, ${inset}px ${edge}px, 0 ${edge}px, 0 ${front}px)`;
 }

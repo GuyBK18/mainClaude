@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 import type { Book } from "@/types/reading";
 import {
   ANGLE_RANGE,
+  boardEndInset,
   DEFAULT_LEANING,
+  END_SPACE,
   layoutRows,
   MAX_PAGES,
   MIN_PAGES,
   poseAt,
   pullTarget,
   REVEAL_RANGE,
+  rowMargins,
   slabOf,
   spinePages,
   springStep,
@@ -213,4 +216,28 @@ describe("leaning shelf", () => {
     }
     expect(hits.slice(0, 5)).toEqual([]);
   }, 30000);
+});
+
+describe("shelf ends", () => {
+  it("slants the board's ends in toward the wall, more on a wider row", () => {
+    expect(boardEndInset(1176)).toBe(39);
+    expect(boardEndInset(328)).toBe(11);
+  });
+
+  it("leaves empty board at both ends of every row", () => {
+    for (const width of [328, 700, 1176]) {
+      const { left, right } = rowMargins(width);
+      expect(left).toBeGreaterThanOrEqual(END_SPACE);
+      expect(right).toBeGreaterThanOrEqual(END_SPACE);
+      for (const settings of settingsGrid()) {
+        for (const row of layoutRows(slabs, settings, width, left, right)) {
+          const a = (settings.angle * Math.PI) / 180;
+          const first = slabs[row[0].index];
+          const last = slabs[row[row.length - 1].index];
+          expect(row[0].x - (first.w * Math.cos(a) + first.t * Math.sin(a)) / 2).toBeGreaterThanOrEqual(left - 0.01);
+          if (row.length > 1) expect(row[row.length - 1].x + (last.w * Math.cos(a) + last.t * Math.sin(a)) / 2).toBeLessThanOrEqual(width - right + 0.01);
+        }
+      }
+    }
+  });
 });

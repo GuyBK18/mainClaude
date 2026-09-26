@@ -7,6 +7,7 @@ import type { Book } from "@/types/reading";
 import { spinePalette } from "@/lib/cover";
 import { swapVariants, type Direction } from "@/lib/motion";
 import {
+  boardEndInset,
   boardLines,
   DEFAULT_LEANING,
   EYE_ABOVE,
@@ -14,6 +15,7 @@ import {
   PERSPECTIVE,
   PLINTH,
   pullTarget,
+  rowMargins,
   shadowShift,
   SHELF_HEIGHT,
   slabOf,
@@ -25,7 +27,7 @@ import {
 } from "@/lib/leaning-shelf";
 import { boardInsides, pageFaces } from "@/lib/book-shape";
 import { BookCover } from "@/components/book/book-cover";
-import { shelfBoard } from "./shelf-board";
+import { boardClip, shelfBoard } from "./shelf-board";
 
 const swap = swapVariants({ opacity: 0, y: 12 });
 
@@ -71,9 +73,9 @@ export function LeaningShelf({
 
 function Shelves({ books, settings, width }: { books: Book[]; settings: LeaningSettings; width: number }) {
   const slabs = useMemo(() => books.map(slabOf), [books]);
-  // Room on the left for the first book of a row to slide out. Phones have no page margin to spare.
-  const inset = width < 640 ? 40 : 8;
-  const rows = useMemo(() => layoutRows(slabs, settings, width, inset), [slabs, settings, width, inset]);
+  const margins = rowMargins(width);
+  const rows = useMemo(() => layoutRows(slabs, settings, width, margins.left, margins.right), [slabs, settings, width, margins.left, margins.right]);
+  const board = { ...boardLines(), row: SHELF_HEIGHT };
   const reduce = useReducedMotion() ?? false;
   const [motionState] = useState(() => new ShelfMotion());
 
@@ -103,9 +105,10 @@ function Shelves({ books, settings, width }: { books: Book[]; settings: LeaningS
             height: SHELF_HEIGHT,
             perspective: PERSPECTIVE,
             perspectiveOrigin: `50% -${EYE_ABOVE}px`,
-            backgroundImage: shelfBoard({ ...boardLines(), row: SHELF_HEIGHT }),
           }}
         >
+          <div aria-hidden className="absolute inset-0" style={{ backgroundImage: shelfBoard(board), clipPath: boardClip(board, boardEndInset(width)) }} />
+
           {/* Contact shadows, flat and behind every book. Depth belongs to the cover layer, so this is allowed. */}
           <div aria-hidden className="absolute inset-0">
             {row.map((placed) => (
