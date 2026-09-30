@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>כרטיסיות · כיוון ב: מסוף</title>
+<link rel="stylesheet" href="shared/fonts.css">
+<style>
+/* Direction B, "Console": keyboard-first. One line per group, fixed columns, one amber accent. */
+:root {
+  --bg: #f6f7f9; --bg-2: #eceff3; --bg-3: #e1e5eb;
+  --fg: #12161b; --fg-2: #39424d; --mute: #5b6571;
+  --line: #d2d8df; --accent: #166b30; --warn: #8f6000;
+  --sans: "IBM Plex Sans Hebrew", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", "IBM Plex Sans Hebrew", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1013; --bg-2: #171a1f; --bg-3: #20252c;
+    --fg: #e4e8ee; --fg-2: #b4bdc8; --mute: #8a95a2;
+    --line: #2a3038; --accent: #7ee787; --warn: #e3b341;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 400 13px/1.4 var(--sans); width: 360px; min-height: 800px; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+.ic { display: block; flex: none; }
+.fav { display: block; flex: none; border-radius: 2px; }
+.mono { font-family: var(--mono); font-feature-settings: "zero" 0; }
+
+/* ---------- top ---------- */
+.top { padding: 10px 12px 0; }
+.bar { display: flex; align-items: center; gap: 8px; }
+.bar h1 { margin: 0; font: 600 14px/1 var(--sans); }
+.bar .sum { font: 400 11px/1 var(--mono); color: var(--mute); flex: 1; }
+.ibtn { width: 28px; height: 28px; display: grid; place-items: center; border: 0; background: none; color: var(--fg-2); border-radius: 4px; }
+.ibtn:hover { background: var(--bg-3); color: var(--fg); }
+.cmd { display: flex; align-items: center; gap: 8px; margin-top: 9px; height: 32px; padding: 0 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 4px; color: var(--mute); }
+.cmd input { flex: 1; border: 0; background: none; outline: none; padding: 0; font-size: 13px; color: var(--fg); }
+.cmd input::placeholder { color: var(--mute); }
+kbd { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; font: 500 10.5px/1 var(--mono); color: var(--fg-2); background: var(--bg-3); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; }
+kbd .ic { width: 10px; height: 10px; }
+.tabs { display: flex; gap: 1px; margin-top: 8px; overflow: hidden; }
+.tab { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 5px; border-radius: 3px; font-size: 12px; color: var(--fg-2); white-space: nowrap; }
+.tab .n { font: 400 10.5px/1 var(--mono); color: var(--mute); }
+.tab.on { background: var(--fg); color: var(--bg); font-weight: 600; }
+.tab.on .n { color: var(--bg); }
+.tab.zero { opacity: .55; }
+.here { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 12px; color: var(--fg-2); }
+.here .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.here b { font-weight: 600; color: var(--fg); }
+
+/* ---------- table ---------- */
+.cols { display: grid; grid-template-columns: 12px 1fr 18px 26px 70px; column-gap: 8px; padding: 10px 12px 4px; font: 400 10.5px/1 var(--mono); color: var(--mute); border-bottom: 1px solid var(--line); }
+.cols span:nth-child(1) { grid-column: 1 / 3; font-family: var(--sans); }
+.cols span:nth-child(2) { grid-column: 3 / 5; text-align: end; font-family: var(--sans); }
+.cols span:nth-child(3) { grid-column: 5; font-family: var(--sans); }
+.sect { padding: 7px 12px 3px; font: 600 10.5px/1 var(--sans); color: var(--mute); display: flex; gap: 6px; }
+.sect .n { font: 400 10.5px/1 var(--mono); }
+.row { position: relative; display: grid; grid-template-columns: 12px 1fr 18px 26px 70px; column-gap: 8px; align-items: center; height: 27px; padding: 0 12px; cursor: pointer; }
+.row:hover { background: var(--bg-2); }
+.row.cur { background: var(--bg-3); }
+.row.cur::before, .row.open::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; width: 2px; background: var(--accent); }
+.sq { width: 9px; height: 9px; border-radius: 2px; justify-self: center; }
+.nm { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.nm .t { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; min-width: 0; }
+.nm .un { color: var(--fg-2); font-weight: 400; flex: none; }
+.nm .hosts { font: 400 11px/1 var(--mono); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr; min-width: 0; }
+.nm .pin { color: var(--mute); }
+.nm .chev { color: var(--mute); }
+.st { color: var(--fg-2); justify-self: center; }
+.st.none { color: var(--line); }
+.cnt { font: 400 11.5px/1 var(--mono); color: var(--fg-2); text-align: end; }
+.age { font-size: 11.5px; color: var(--mute); white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+.age.live { color: var(--accent); }
+.age.stale { color: var(--warn); font-weight: 500; }
+.sub { display: flex; align-items: center; gap: 6px; padding: 0 12px 5px 12px; padding-inline-start: 32px; margin-top: -3px; font-size: 12px; color: var(--fg-2); }
+.sub .ic { color: var(--fg-2); }
+.sub .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.peek { padding: 0 12px 6px; padding-inline-start: 32px; margin-top: -3px; background: var(--bg-3); font-size: 11.5px; color: var(--mute); display: flex; align-items: baseline; white-space: nowrap; overflow: hidden; }
+.rt { flex: 0 1 auto; min-width: 3.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.rt:first-of-type { max-width: 62%; min-width: 0; }
+.rest { flex: none; margin-inline-start: 8px; opacity: .8; }
+.peek .sep { flex: none; align-self: center; display: inline-block; width: 3px; height: 3px; background: var(--mute); border-radius: 50%; vertical-align: middle; margin: 0 6px; }
+
+/* ---------- the open group ---------- */
+.row.open { background: var(--bg-2); }
+.open-body { position: relative; background: var(--bg-2); padding: 0 12px 10px; }
+.open-body::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; width: 2px; background: var(--accent); }
+.meta { display: flex; align-items: center; gap: 10px; padding: 1px 0 6px; padding-inline-start: 20px; font-size: 11.5px; color: var(--mute); }
+.pick { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: 3px; color: var(--fg); background: var(--bg); }
+.meta .live { color: var(--accent); }
+.tree { list-style: none; margin: 0; padding: 0; padding-inline-start: 20px; position: relative; }
+.tree::before { content: ""; position: absolute; inset-inline-start: 25px; top: 0; bottom: 11px; width: 1px; background: var(--line); }
+.it { position: relative; display: grid; grid-template-columns: 14px 14px 1fr auto; column-gap: 7px; align-items: center; min-height: 24px; }
+.it::before { content: ""; grid-column: 1; grid-row: 1; height: 1px; background: var(--line); margin-inline-start: 5px; }
+.it > .fav { grid-column: 2; grid-row: 1; }
+.it > .t { grid-column: 3; grid-row: 1; }
+.it > .h, .it > .acts { grid-column: 4; grid-row: 1; }
+.it .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; font-size: 12.5px; }
+.it .h { font: 400 10.5px/1 var(--mono); color: var(--mute); max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; }
+.it.active .t { font-weight: 600; color: var(--fg); }
+.it.active .h { color: var(--accent); font-family: var(--sans); direction: rtl; }
+.it .note { grid-column: 3 / 5; display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--fg-2); margin: -2px 0 3px; }
+.it .note .ic { color: var(--fg-2); }
+.it.notopen .t { color: var(--mute); }
+.it.notopen .fav { opacity: .4; filter: grayscale(1); }
+.it.notopen .h { font-family: var(--sans); direction: rtl; font-size: 11px; }
+.it.hover { background: var(--bg-3); margin-inline-end: -6px; padding-inline-end: 6px; border-radius: 3px; }
+.acts { display: flex; }
+.acts button { width: 22px; height: 22px; display: grid; place-items: center; border: 0; background: none; color: var(--fg-2); border-radius: 3px; }
+.acts button:hover { background: var(--bg); color: var(--fg); }
+.taskrow { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; padding-inline-start: 20px; font-size: 12px; }
+.taskrow label { color: var(--fg-2); font-weight: 600; flex: none; }
+.taskrow input { flex: 1; min-width: 0; height: 26px; border: 1px dashed var(--line); border-radius: 3px; background: var(--bg); padding: 0 7px; font-size: 12px; outline: none; }
+.taskrow input::placeholder { color: var(--mute); }
+.btns { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-inline-start: 20px; }
+.b { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.b.pri { background: var(--fg); border-color: var(--fg); color: var(--bg); font-weight: 600; }
+.b.ico { width: 28px; padding: 0; justify-content: center; color: var(--fg-2); }
+.btns .sp { flex: 1; }
+
+/* ---------- key hints ---------- */
+.keys { margin-top: auto; position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 12px; background: var(--bg); border-top: 1px solid var(--line); font-size: 11.5px; color: var(--mute); }
+.keys span { display: inline-flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <h1>כרטיסיות</h1><span class="sum" id="sum"></span>
+    <button class="ibtn" id="b-add" title="הוספת הלשונית הנוכחית"></button>
+    <button class="ibtn" id="b-trash" title="סל המחזור"></button>
+    <button class="ibtn" id="b-set" title="הגדרות"></button>
+  </div>
+  <label class="cmd"><span id="s-ic"></span><input type="search" placeholder="חיפוש בקבוצות, בכותרות ובמשימות"><kbd>/</kbd></label>
+  <div class="tabs" id="tabs"></div>
+  <div class="here" id="here"></div>
+</header>
+<div class="cols"><span>קבוצה</span><span>פריטים</span><span>פעילות</span></div>
+<main id="list"></main>
+<footer class="keys" id="keys"></footer>
+<script src="shared/mock.js"></script>
+<script>
+document.getElementById('b-add').innerHTML = icon('plus', 18);
+document.getElementById('b-trash').innerHTML = icon('trash', 16);
+document.getElementById('b-set').innerHTML = icon('sliders', 17);
+document.getElementById('s-ic').innerHTML = icon('search', 15);
+document.getElementById('sum').innerHTML = '6 קבוצות · 2 פתוחות';
+
+var dark = matchMedia('(prefers-color-scheme: dark)').matches;
+function gc(g) { return GROUP_COLORS[g.color][dark ? 1 : 0]; }
+
+var ICONIC = { watch: 1, read: 1, skim: 1, working: 1, archive: 1, old: 1, task: 1 };
+document.getElementById('tabs').innerHTML = FILTERS.map(function (f, i) {
+  var ic = f.key === 'old' ? 'clock' : f.key === 'task' ? 'note' : statusIcon(f.key);
+  var label = ICONIC[f.key] ? '<span title="' + f.label + '">' + icon(ic, 13) + '</span>' : f.label;
+  return '<span class="tab' + (i === 0 ? ' on' : '') + (f.n ? '' : ' zero') + '">' + label + '<span class="n">' + f.n + '</span></span>';
+}).join('');
+var g1 = SAMPLE.groups[0];
+document.getElementById('here').innerHTML = '<span class="dot"></span>הלשונית הפעילה כבר בקבוצה <b>' + bdi(g1.name) + '</b>';
+
+function nameCell(g, open) {
+  var n = g.name
+    ? line(g.name)
+    : '<span class="un">ללא שם</span><span class="hosts">' + esc(topHosts(g).join(', ')) + '</span>';
+  return '<span class="nm">' + (open ? '<span class="chev">' + icon('chevronDown', 13) + '</span>' : '') + n +
+    (g.pinned ? '<span class="pin" title="נעוצה">' + icon('pin', 12) + '</span>' : '') + '</span>';
+}
+function ageCell(g) {
+  if (g.live) return '<span class="age live">פתוחה</span>';
+  if (isStale(g)) return '<span class="age stale">' + icon('clock', 12) + Math.round(g.days / 7) + ' שבועות</span>';
+  return '<span class="age">' + ageText(g.days).replace('לפני ', '') + '</span>';
+}
+function row(g, cls) {
+  return '<div class="row ' + (cls || '') + '"><span class="sq" style="background:' + gc(g) + '"></span>' + nameCell(g, cls === 'open') +
+    '<span class="st ' + g.status + '" title="' + STATUS[g.status] + '">' + icon(statusIcon(g.status), 14) + '</span>' +
+    '<span class="cnt">' + g.items.length + '</span>' + ageCell(g) + '</div>';
+}
+function collapsed(g, cursor) {
+  var h = row(g, cursor ? 'cur' : '');
+  if (g.task) h += '<div class="sub">' + icon('corner', 13) + line(g.task) + '</div>';
+  if (cursor) h += '<div class="peek">' + runon(g) + '</div>';
+  return h;
+}
+function item(it) {
+  var cls = 'it' + (it.active ? ' active' : '') + (it.notOpen ? ' notopen' : '') + (it.hover ? ' hover' : '');
+  var end = it.hover
+    ? '<span class="acts"><button title="שינוי כותרת">' + icon('pencil', 13) + '</button><button title="הערה">' + icon('note', 13) + '</button><button title="העברה לקבוצה אחרת">' + icon('move', 13) + '</button><button title="סיימתי">' + icon('check', 14) + '</button></span>'
+    : '<span class="h">' + (it.active ? 'הלשונית הפעילה' : it.notOpen ? 'לא פתוח' : esc(hostOf(it.url))) + '</span>';
+  var note = it.note ? '<div class="note">' + icon('note', 12) + '<span>' + esc(it.note) + '</span></div>' : '';
+  return '<li class="' + cls + '">' + fav(it.url, 14) + line(displayTitle(it)) + end + note + '</li>';
+}
+function expanded(g) {
+  return row(g, 'open') + '<div class="open-body">' +
+    '<div class="meta"><span class="pick">' + icon(statusIcon(g.status), 12) + STATUS[g.status] + icon('chevronDown', 11) + '</span><span class="live">פתוחה בכרום</span><span>5 מתוך 6 פתוחים</span></div>' +
+    '<ul class="tree">' + g.items.map(item).join('') + '</ul>' +
+    '<div class="taskrow"><label>משימה</label><input placeholder="מה לעשות עם הקבוצה. יישלח לקלוד עם הקישורים"></div>' +
+    '<div class="btns"><span class="b pri">' + icon('chat', 14) + 'צ׳אט עם קלוד</span><span class="b">' + icon('terminal', 14) + 'קלוד קוד</span><span class="sp"></span>' +
+    '<span class="b ico" title="הצגה בכרום">' + icon('window', 14) + '</span><span class="b ico" title="סגירה ושמירה">' + icon('closeSave', 14) + '</span><span class="b ico" title="עוד">' + icon('more', 14) + '</span></div>' +
+    '</div>';
+}
+
+var live = SAMPLE.groups.filter(function (g) { return g.live; });
+var saved = SAMPLE.groups.filter(function (g) { return !g.live; });
+document.getElementById('list').innerHTML =
+  '<div class="sect">פתוחות בכרום<span class="n">' + live.length + '</span></div>' +
+  live.map(function (g, i) { return i === 0 ? expanded(g) : collapsed(g); }).join('') +
+  '<div class="sect">שמורות<span class="n">' + saved.length + '</span></div>' +
+  saved.map(function (g) { return collapsed(g, g.id === 'g5'); }).join('');
+
+document.getElementById('keys').innerHTML =
+  '<span>ניווט <kbd>' + icon('arrowUp', 10) + '</kbd><kbd>' + icon('arrowDown', 10) + '</kbd></span>' +
+  '<span>פתיחה <kbd>' + icon('enter', 10) + '</kbd></span>' +
+  '<span>חיפוש <kbd>/</kbd></span>' +
+  '<span>סיימתי <kbd>D</kbd></span>' +
+  '<span>ביטול <kbd>' + icon('cmd', 10) + '</kbd><kbd>Z</kbd></span>';
+</script>
+</body>
+</html>

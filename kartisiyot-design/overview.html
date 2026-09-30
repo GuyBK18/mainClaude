@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>כרטיסיות · שלושה כיוונים</title>
+<link rel="stylesheet" href="shared/fonts.css">
+<style>
+  body { margin: 0; padding: 22px 24px 28px; font: 500 15px/1.3 "Rubik", system-ui, sans-serif; background: #cfcdc8; color: #1d1d1b; }
+  body.dark { background: #2c2c2e; color: #f1f0ec; }
+  .row { display: flex; gap: 28px; align-items: flex-start; }
+  figure { margin: 0; width: 360px; }
+  figcaption { margin-bottom: 10px; display: flex; gap: 8px; align-items: baseline; }
+  figcaption small { font-weight: 400; opacity: .7; font-size: 13px; }
+  .frame { position: relative; width: 360px; box-shadow: 0 1px 3px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.18); }
+  .frame img { display: block; width: 360px; }
+  .fold { position: absolute; inset-inline: -10px; top: 800px; border-top: 2px dashed #d23c2a; }
+  .fold span { position: absolute; inset-inline-end: 10px; top: -10px; font-size: 11px; font-weight: 500; color: #fff; background: #d23c2a; padding: 2px 7px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="row" id="row"></div>
+<script>
+var mode = location.hash === '#dark' ? 'dark' : 'light';
+if (mode === 'dark') document.body.className = 'dark';
+var dirs = [
+  ['a-index', 'א · מפתח', 'ספר, טיפוגרפיה, דיו אדום'],
+  ['b-console', 'ב · מסוף', 'מקלדת, שורה אחת לקבוצה'],
+  ['c-catalog', 'ג · מגירה', 'כרטיסיות ספרייה עם לשוניות']
+];
+document.getElementById('row').innerHTML = dirs.map(function (d) {
+  return '<figure><figcaption>' + d[1] + '<small>' + d[2] + '</small></figcaption><div class="frame"><img src="shots/' + d[0] + '-' + mode + '-full.png"><div class="fold"><span>כאן נגמר מסך בגובה 800</span></div></div></figure>';
+}).join('');
+</script>
+</body>
+</html>

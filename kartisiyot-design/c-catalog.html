@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>כרטיסיות · כיוון ג: מגירה</title>
+<link rel="stylesheet" href="shared/fonts.css">
+<style>
+/* Direction C, "Card catalog": each group is an index card with a colored divider tab,
+   stacked in a drawer. The open card is pulled up and shows its ruled lines. */
+:root {
+  --drawer: #e5e0d4; --drawer-2: #d8d1c2;
+  --card: #fffdf8; --card-2: #f6f1e5;
+  --ink: #23211d; --ink-2: #544f46; --mute: #615b50;
+  --red: #b83a28; --pen: #2f5a88; --ruled: rgba(47, 90, 136, .20);
+  --edge: rgba(58, 48, 30, .20); --shadow: rgba(58, 48, 30, .20);
+  --tint: 26%;
+  --sans: "Rubik", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --drawer: #131416; --drawer-2: #0d0e0f;
+    --card: #202125; --card-2: #282a2f;
+    --ink: #eceae4; --ink-2: #c0bcb3; --mute: #9b978e;
+    --red: #ec7a68; --pen: #93b8e6; --ruled: rgba(147, 184, 230, .16);
+    --edge: rgba(0, 0, 0, .55); --shadow: rgba(0, 0, 0, .55);
+    --tint: 30%;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--drawer); color: var(--ink); font: 400 13px/1.4 var(--sans); width: 360px; -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+.ic { display: block; flex: none; }
+.fav { display: block; flex: none; border-radius: 2px; }
+bdi { unicode-bidi: isolate; }
+
+/* ---------- drawer front ---------- */
+.front { padding: 12px 14px 4px; }
+.frow { display: flex; align-items: center; gap: 2px; }
+.label { font: 600 15px/1 var(--sans); padding: 6px 12px; border: 1px solid var(--ink-2); outline: 1px solid var(--ink-2); outline-offset: 2px; border-radius: 2px; margin: 3px; background: var(--card); }
+.frow .sp { flex: 1; }
+.ibtn { width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-2); border-radius: 4px; }
+.ibtn:hover { background: var(--drawer-2); color: var(--ink); }
+.search { display: flex; align-items: center; gap: 8px; margin-top: 12px; height: 34px; padding: 0 10px; background: var(--card); border-radius: 4px; box-shadow: inset 0 1px 2px var(--shadow); color: var(--mute); }
+.search input { flex: 1; border: 0; background: none; outline: none; padding: 0; font-size: 13.5px; color: var(--ink); }
+.search input::placeholder { color: var(--mute); }
+.guides { display: flex; flex-wrap: wrap; gap: 4px 2px; margin-top: 10px; }
+.guide { display: inline-flex; align-items: center; gap: 4px; height: 23px; padding: 0 8px; border-radius: 5px 5px 0 0; font-size: 12px; color: var(--ink-2); border-bottom: 2px solid var(--drawer-2); white-space: nowrap; }
+.guide .n { font-size: 11px; color: var(--mute); font-feature-settings: "tnum"; }
+.guide.on { background: var(--card); color: var(--ink); font-weight: 600; border-bottom-color: var(--red); box-shadow: 0 -1px 3px var(--shadow); }
+.guide.zero { opacity: .6; }
+.slip { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.slip .sq { width: 10px; height: 10px; border-radius: 2px; }
+.slip b { font-weight: 600; color: var(--ink); }
+
+/* ---------- stack ---------- */
+.sect { display: flex; align-items: baseline; gap: 6px; padding: 16px 16px 4px; font: 600 12px/1 var(--sans); color: var(--ink-2); }
+.sect .n { font-weight: 400; color: var(--mute); }
+.stack { padding: 12px 10px 0; }
+.card { --gc: #888; position: relative; margin-top: -4px; }
+.card:first-child { margin-top: 0; }
+.tab { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; max-width: 78%; height: 24px; margin-inline-start: 10px; padding: 0 11px; border-radius: 7px 7px 0 0; background: color-mix(in srgb, var(--gc) var(--tint), var(--card)); color: var(--ink); font: 500 13.5px/1 var(--sans); box-shadow: 0 -1px 2px var(--shadow); }
+.tab .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; min-width: 0; }
+.tab .un { color: var(--ink-2); font-weight: 400; }
+.tab .hosts { font-size: 11.5px; color: var(--ink-2); font-weight: 400; direction: ltr; white-space: nowrap; }
+.tab .pin { color: var(--ink-2); }
+.body { position: relative; background: var(--card); border-radius: 3px; border-start-start-radius: 0; box-shadow: 0 -1px 0 var(--edge), 0 -5px 10px -8px var(--shadow); padding: 7px 12px 10px; }
+.card::after { content: ""; position: absolute; inset-inline: 0; top: 24px; height: 3px; background: color-mix(in srgb, var(--gc) 70%, var(--card)); border-start-end-radius: 3px; }
+.l1 { display: flex; align-items: baseline; gap: 10px; }
+.preview { flex: 1; min-width: 0; margin: 2px 0 0; font-size: 12.5px; color: var(--ink-2); display: flex; align-items: baseline; white-space: nowrap; overflow: hidden; }
+.rt { flex: 0 1 auto; min-width: 3.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.rt:first-of-type { max-width: 62%; min-width: 0; }
+.rest { flex: none; margin-inline-start: 8px; opacity: .8; }
+.preview .sep { flex: none; align-self: center; display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--mute); vertical-align: middle; margin: 0 6px; }
+.meta { flex: none; font-size: 11.5px; color: var(--mute); white-space: nowrap; }
+.meta b { font-weight: 500; color: var(--ink-2); }
+.l2 { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 12.5px; }
+.l2 .k { color: var(--red); font-weight: 600; flex: none; }
+.l2 .t { color: var(--pen); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.stamp { display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; padding: 3px 7px; border: 1.5px solid var(--red); border-radius: 3px; color: var(--red); font: 600 11.5px/1 var(--sans); transform: rotate(-2.5deg); transform-origin: right center; opacity: .9; }
+
+/* ---------- the pulled-up card ---------- */
+.card.open { margin: 10px -4px 12px; }
+.card.open .tab { height: 27px; font-size: 14.5px; font-weight: 600; }
+.card.open::after { top: 27px; }
+.card.open .body { box-shadow: 0 1px 0 var(--edge), 0 8px 22px -6px var(--shadow), 0 -1px 0 var(--edge); padding: 10px 14px 14px; }
+.head { display: flex; align-items: center; gap: 10px; padding-bottom: 6px; border-bottom: 1.5px solid var(--red); font-size: 12px; color: var(--mute); }
+.pick { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--ink); border-bottom: 1px dashed var(--ink-2); }
+.head .live { color: #1e7d3e; }
+@media (prefers-color-scheme: dark) { .head .live { color: #86d19c; } }
+.head .sp { flex: 1; }
+.lines { list-style: none; margin: 0; padding: 0; }
+.it { display: grid; grid-template-columns: 16px 1fr auto; column-gap: 8px; align-items: center; min-height: 29px; border-bottom: 1px solid var(--ruled); position: relative; }
+.it .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; font-size: 13px; }
+.it .h { font-size: 11px; color: var(--mute); direction: ltr; max-width: 92px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.it.active .t { font-weight: 600; }
+.it.active::before { content: ""; position: absolute; inset-inline-start: -10px; top: 50%; width: 5px; height: 5px; margin-top: -8px; border-radius: 50%; background: var(--red); }
+.it .note { grid-column: 2 / 4; display: flex; align-items: center; gap: 5px; color: var(--pen); font-size: 12.5px; padding: 0 0 5px; margin-top: -3px; }
+.it.notopen .t { color: var(--mute); }
+.it.notopen .fav { opacity: .4; filter: grayscale(1); }
+.it.notopen .h { direction: rtl; }
+.it.hover { background: var(--card-2); margin-inline: -8px; padding-inline: 8px; }
+.acts { display: flex; }
+.acts button { width: 24px; height: 24px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-2); border-radius: 3px; }
+.acts button:hover { background: var(--drawer); color: var(--ink); }
+.taskline { display: flex; align-items: center; gap: 8px; min-height: 32px; border-bottom: 1px solid var(--ruled); font-size: 12.5px; }
+.taskline .k { color: var(--red); font-weight: 600; }
+.taskline input { flex: 1; border: 0; background: none; outline: none; padding: 0; font-size: 13px; color: var(--pen); }
+.taskline input::placeholder { color: var(--mute); }
+.btns { display: flex; gap: 8px; margin-top: 12px; }
+.btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 33px; border-radius: 4px; border: 1.5px solid var(--ink); background: none; font: 500 13px/1 var(--sans); }
+.btn.solid { background: var(--ink); color: var(--card); }
+.links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.links span { display: inline-flex; align-items: center; gap: 4px; }
+.foot { height: 20px; }
+</style>
+</head>
+<body>
+<header class="front">
+  <div class="frow">
+    <span class="label">כרטיסיות</span><span class="sp"></span>
+    <button class="ibtn" id="b-add" title="הוספת הלשונית הנוכחית"></button>
+    <button class="ibtn" id="b-trash" title="סל המחזור"></button>
+    <button class="ibtn" id="b-set" title="הגדרות"></button>
+  </div>
+  <label class="search"><span id="s-ic"></span><input type="search" placeholder="חיפוש בקבוצות, בכותרות ובמשימות"></label>
+  <div class="guides" id="guides"></div>
+  <div class="slip" id="slip"></div>
+</header>
+<main id="list"></main>
+<div class="foot"></div>
+<script src="shared/mock.js"></script>
+<script>
+document.getElementById('b-add').innerHTML = icon('plus', 19);
+document.getElementById('b-trash').innerHTML = icon('trash', 17);
+document.getElementById('b-set').innerHTML = icon('sliders', 18);
+document.getElementById('s-ic').innerHTML = icon('search', 16);
+
+var dark = matchMedia('(prefers-color-scheme: dark)').matches;
+function gc(g) { return GROUP_COLORS[g.color][dark ? 1 : 0]; }
+
+document.getElementById('guides').innerHTML = FILTERS.map(function (f, i) {
+  return '<span class="guide' + (i === 0 ? ' on' : '') + (f.n ? '' : ' zero') + '">' + f.label + '<span class="n">' + f.n + '</span></span>';
+}).join('');
+var g1 = SAMPLE.groups[0];
+document.getElementById('slip').innerHTML = '<span class="sq" style="background:' + gc(g1) + '"></span>הלשונית הפעילה כבר בקבוצה <b>' + bdi(g1.name) + '</b>';
+
+function tab(g) {
+  var n = g.name ? line(g.name) : '<span class="un">ללא שם</span><span class="hosts">' + esc(topHosts(g).join(', ')) + '</span>';
+  return '<div class="tab">' + (g.pinned ? '<span class="pin" title="נעוצה">' + icon('pin', 12) + '</span>' : '') + n + '</div>';
+}
+function metaText(g) {
+  var parts = [];
+  if (g.status !== 'none') parts.push(STATUS[g.status]);
+  parts.push('<b>' + g.items.length + '</b>');
+  return parts.join(' · ');
+}
+function card(g) {
+  var titles = runon(g, 2, true);
+  var h = '<article class="card" style="--gc:' + gc(g) + '">' + tab(g) + '<div class="body">' +
+    '<div class="l1"><p class="preview">' + titles + '</p><span class="meta">' + metaText(g) + '</span></div>';
+  if (g.task) h += '<div class="l2"><span class="k">משימה</span>' + line(g.task) + '</div>';
+  if (isStale(g)) h += '<div class="stamp">' + icon('clock', 12) + staleText(g.days) + '</div>';
+  return h + '</div></article>';
+}
+function item(it) {
+  var cls = 'it' + (it.active ? ' active' : '') + (it.notOpen ? ' notopen' : '') + (it.hover ? ' hover' : '');
+  var end = it.hover
+    ? '<span class="acts"><button title="שינוי כותרת">' + icon('pencil', 14) + '</button><button title="הערה">' + icon('note', 14) + '</button><button title="העברה לקבוצה אחרת">' + icon('move', 14) + '</button><button title="סיימתי">' + icon('check', 15) + '</button></span>'
+    : '<span class="h">' + (it.notOpen ? 'לא פתוח' : esc(hostOf(it.url))) + '</span>';
+  var note = it.note ? '<div class="note">' + icon('note', 13) + '<span>' + esc(it.note) + '</span></div>' : '';
+  return '<li class="' + cls + '">' + fav(it.url, 15) + line(displayTitle(it)) + end + note + '</li>';
+}
+function openCard(g) {
+  return '<article class="card open" style="--gc:' + gc(g) + '">' + tab(g) + '<div class="body">' +
+    '<div class="head"><span class="pick">' + STATUS[g.status] + icon('chevronDown', 12) + '</span><span class="live">פתוחה בכרום</span><span class="sp"></span><span>5 מתוך 6 פתוחים</span></div>' +
+    '<ul class="lines">' + g.items.map(item).join('') + '</ul>' +
+    '<div class="taskline"><span class="k">משימה</span><input placeholder="מה לעשות עם הקבוצה. יישלח לקלוד עם הקישורים"></div>' +
+    '<div class="btns"><span class="btn solid">' + icon('chat', 15) + 'צ׳אט עם קלוד</span><span class="btn">' + icon('terminal', 15) + 'קלוד קוד</span></div>' +
+    '<div class="links"><span>' + icon('window', 13) + 'הצגה בכרום</span><span>' + icon('closeSave', 13) + 'סגירה ושמירה</span><span>' + icon('copy', 13) + 'העתקה</span><span>' + icon('more', 13) + 'עוד</span></div>' +
+    '</div></article>';
+}
+
+var live = SAMPLE.groups.filter(function (g) { return g.live; });
+var saved = SAMPLE.groups.filter(function (g) { return !g.live; });
+document.getElementById('list').innerHTML =
+  '<div class="sect">פתוחות בכרום<span class="n">' + live.length + '</span></div>' +
+  '<div class="stack">' + live.map(function (g, i) { return i === 0 ? openCard(g) : card(g); }).join('') + '</div>' +
+  '<div class="sect">שמורות<span class="n">' + saved.length + '</span></div>' +
+  '<div class="stack">' + saved.map(card).join('') + '</div>';
+</script>
+</body>
+</html>
