@@ -171,7 +171,14 @@ var ICON_PATHS = {
   ribbon: '<path d="M7 3h10v18l-5-3.5L7 21z" fill="currentColor" stroke="none"/>',
   stack: '<path d="m12 4 9 4.5-9 4.5-9-4.5z"/><path d="m3 13 9 4.5 9-4.5"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
-  cmd: '<path d="M9 9V6.5A2.5 2.5 0 1 0 6.5 9h11A2.5 2.5 0 1 0 15 6.5v11a2.5 2.5 0 1 0 2.5-2.5h-11A2.5 2.5 0 1 0 9 17.5z"/>'
+  cmd: '<path d="M9 9V6.5A2.5 2.5 0 1 0 6.5 9h11A2.5 2.5 0 1 0 15 6.5v11a2.5 2.5 0 1 0 2.5-2.5h-11A2.5 2.5 0 1 0 9 17.5z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+  moon: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>',
+  optKey: '<path d="M4 7h5l6 10h5M14 7h6"/>',
+  shiftKey: '<path d="M12 4.5 20 12.5h-4.5V19h-7v-6.5H4z"/>',
+  download: '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
+  upload: '<path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/>',
+  back: '<path d="M5 12h14M13 6l6 6-6 6"/>'
 };
 function icon(name, size, cls) {
   var s = size || 16;
