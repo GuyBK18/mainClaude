@@ -1,0 +1,63 @@
+/* Structure shared by every theme. Theme files add the look. */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { min-width: 280px; -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+p, h1, h2, h3 { margin: 0; font-size: inherit; font-weight: inherit; }
+ul { list-style: none; margin: 0; padding: 0; }
+.ic { display: block; flex: none; }
+.fav { display: block; flex: none; border-radius: 2px; }
+bdi { unicode-bidi: isolate; }
+kbd { font-family: inherit; }
+
+/* User text that may be cut. dir=auto on the element keeps an English title's start. */
+.t, .g-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; min-width: 0; }
+
+/* Parts that only some themes use. Hidden unless a theme shows them. */
+/* The html prefix makes these win over a theme's general rule (for example ".f") unless the theme names the part itself. */
+html .ambient, html .cols, html .keys, html .f-ic, html .f.more, html .it-now, html .g-chev, html .g-st, html .g-age { display: none; }
+.it .acts { display: none; }
+.it:is(:hover, :focus-within) .acts { display: flex; }
+
+/* Item titles in a collapsed group: two titles, each cut on its own, then "ועוד N". */
+.g-preview { display: flex; align-items: baseline; white-space: nowrap; overflow: hidden; min-width: 0; }
+.rt { flex: 0 1 auto; min-width: 3.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.rt:first-of-type { max-width: 62%; min-width: 0; }
+.sep { flex: none; align-self: center; width: 3px; height: 3px; border-radius: 50%; margin: 0 6px; background: currentColor; opacity: .6; }
+.rest { flex: none; margin-inline-start: 8px; }
+
+/* Settings rows */
+.s-lbl { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.s-ctl { flex: none; }
+.s-row.col .s-ctl { flex: auto; }
+.num, .keys-set { display: inline-flex; align-items: center; gap: 5px; }
+/* A shortcut always reads left to right, as on the keyboard. */
+.kseq { display: inline-flex; gap: 3px; direction: ltr; unicode-bidi: isolate; }
+.path { direction: ltr; text-align: left; }
+
+/* Small pictures of each theme, used in the theme picker. They look the same in every theme. */
+.th-pv { position: relative; display: block; height: 50px; overflow: hidden; }
+.th-pv i { position: absolute; display: block; }
+.pv-drawer { background: #e5e0d4; }
+.pv-drawer i { inset-inline: 7px; height: 11px; background: #fffdf8; box-shadow: 0 -1px 2px rgba(58, 48, 30, .22); }
+.pv-drawer i::before { content: ""; position: absolute; inset-inline-start: 4px; top: -5px; width: 22px; height: 5px; border-radius: 3px 3px 0 0; }
+.pv-drawer i:nth-child(1) { top: 9px; } .pv-drawer i:nth-child(1)::before { background: #b7cdf2; }
+.pv-drawer i:nth-child(2) { top: 23px; } .pv-drawer i:nth-child(2)::before { background: #bfe0c7; }
+.pv-drawer i:nth-child(3) { top: 37px; } .pv-drawer i:nth-child(3)::before { background: #f6d2b5; }
+.pv-console { background: #0e1013; }
+.pv-console i { inset-inline: 8px; height: 3px; background: #3a414b; border-radius: 1px; }
+.pv-console i:nth-child(1) { top: 12px; inset-inline-end: 30px; background: #e4e8ee; }
+.pv-console i:nth-child(1)::before { content: ""; position: absolute; inset-inline-start: -6px; top: -3px; width: 2px; height: 9px; background: #7ee787; }
+.pv-console i:nth-child(2) { top: 24px; inset-inline-end: 18px; }
+.pv-console i:nth-child(3) { top: 36px; inset-inline-end: 40px; }
+.pv-glass { background: radial-gradient(70% 70% at 90% 0%, rgba(26, 115, 232, .35), transparent 70%), radial-gradient(60% 70% at 0% 100%, rgba(30, 142, 62, .28), transparent 70%), #eef0f4; }
+.pv-glass i { inset-inline: 8px; height: 12px; border-radius: 6px; background: rgba(255, 255, 255, .72); box-shadow: inset 0 1px 0 #fff, 0 3px 8px -4px rgba(17, 19, 24, .3); }
+.pv-glass i:nth-child(1) { top: 7px; } .pv-glass i:nth-child(2) { top: 21px; } .pv-glass i:nth-child(3) { top: 35px; inset-inline-end: 26px; }
+[data-mode="dark"] .pv-drawer { background: #131416; }
+[data-mode="dark"] .pv-drawer i { background: #26272c; box-shadow: 0 -1px 2px rgba(0, 0, 0, .6); }
+[data-mode="dark"] .pv-drawer i:nth-child(1)::before { background: #3f5a86; }
+[data-mode="dark"] .pv-drawer i:nth-child(2)::before { background: #3f6a4d; }
+[data-mode="dark"] .pv-drawer i:nth-child(3)::before { background: #7a5a40; }
+[data-mode="dark"] .pv-glass { background: radial-gradient(70% 70% at 90% 0%, rgba(138, 180, 248, .28), transparent 70%), radial-gradient(60% 70% at 0% 100%, rgba(129, 201, 149, .2), transparent 70%), #0a0b0f; }
+[data-mode="dark"] .pv-glass i { background: rgba(255, 255, 255, .1); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }

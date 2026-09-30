@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "כרטיסיות",
-  "description": "קבוצות הלשוניות של כרום ככרטיסים: שמות, סטטוס, משימה ופתיחה ישירה בקלוד.",
-  "version": "1.0.0",
-  "minimum_chrome_version": "116",
-  "permissions": ["tabs", "tabGroups", "storage", "unlimitedStorage", "sidePanel", "favicon"],
+  "description": "קבוצות הלשוניות של כרום ככרטיסים: שמות, סטטוס, משימה, הערות ופתיחה ישירה בקלוד.",
+  "version": "2.0.0",
+  "minimum_chrome_version": "120",
+  "permissions": ["tabs", "tabGroups", "storage", "unlimitedStorage", "sidePanel", "favicon", "contextMenus"],
   "background": { "service_worker": "background.js" },
   "side_panel": { "default_path": "sidepanel.html" },
   "action": {

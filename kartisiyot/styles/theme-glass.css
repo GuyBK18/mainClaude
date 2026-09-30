@@ -1,0 +1,166 @@
+/* Theme "זכוכית" (glass): frosted cards over a soft wash of the open groups' colors.
+   Blur only on floating layers (the header and the open card). Rounded, concentric corners. */
+[data-theme="glass"] {
+  --bg: #eceef2;
+  --amb-a: color-mix(in srgb, var(--amb-1) 48%, transparent);
+  --amb-b: color-mix(in srgb, var(--amb-2) 40%, transparent);
+  --amb-c: rgba(255, 160, 110, .3);
+  --glass: rgba(255, 255, 255, .55); --glass-hi: rgba(255, 255, 255, .82);
+  --edge: rgba(255, 255, 255, .9); --hl: inset 0 1px 0 rgba(255, 255, 255, .95);
+  --line: rgba(17, 19, 24, .08); --field: rgba(17, 19, 24, .045); --track: rgba(17, 19, 24, .06);
+  --lens: #fff; --chip: rgba(255, 255, 255, .8); --tile: #fff; --row-hover: rgba(255, 255, 255, .72); --sheen: rgba(255, 255, 255, .35);
+  --ink: #111318; --ink-2: #434956; --mute: #5b6170;
+  --live: #13753a; --warn: #955800;
+  --pri-bg: #16181d; --pri-fg: #fff;
+  --shadow: 0 1px 2px rgba(17, 19, 24, .05), 0 12px 32px -14px rgba(17, 19, 24, .24);
+  --shadow-hi: 0 2px 4px rgba(17, 19, 24, .05), 0 26px 50px -22px rgba(17, 19, 24, .38);
+  --font: "Heebo", system-ui, sans-serif;
+  color-scheme: light;
+}
+[data-theme="glass"][data-mode="dark"] {
+  --bg: #0a0b0f;
+  --amb-a: color-mix(in srgb, var(--amb-1) 36%, transparent);
+  --amb-b: color-mix(in srgb, var(--amb-2) 27%, transparent);
+  --amb-c: rgba(255, 150, 100, .13);
+  --glass: rgba(30, 32, 40, .58); --glass-hi: rgba(42, 45, 56, .86);
+  --edge: rgba(255, 255, 255, .09); --hl: inset 0 1px 0 rgba(255, 255, 255, .08);
+  --line: rgba(255, 255, 255, .08); --field: rgba(255, 255, 255, .06); --track: rgba(255, 255, 255, .07);
+  --lens: rgba(255, 255, 255, .16); --chip: rgba(255, 255, 255, .08); --tile: rgba(255, 255, 255, .1); --row-hover: rgba(255, 255, 255, .06); --sheen: rgba(255, 255, 255, .05);
+  --ink: #f2f3f6; --ink-2: #c6cad3; --mute: #a2a8b5;
+  --live: #7fd99a; --warn: #f2b765;
+  --pri-bg: #f2f3f6; --pri-fg: #111318;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 14px 34px -14px rgba(0, 0, 0, .75);
+  --shadow-hi: 0 2px 4px rgba(0, 0, 0, .4), 0 26px 50px -20px rgba(0, 0, 0, .85);
+  color-scheme: dark;
+}
+[data-theme="glass"] body { background: var(--bg); color: var(--ink); font: 400 13.5px/1.45 var(--font); }
+[data-theme="glass"] .ambient {
+  display: block; position: fixed; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(380px 320px at 100% 0, var(--amb-a), transparent 72%),
+    radial-gradient(330px 380px at 0 340px, var(--amb-b), transparent 72%),
+    radial-gradient(400px 300px at 75% 780px, var(--amb-c), transparent 72%);
+}
+[data-theme="glass"] .app { position: relative; padding: 10px 10px 28px; }
+
+/* ---------- floating header ---------- */
+[data-theme="glass"] .top { position: sticky; top: 10px; z-index: 5; padding: 12px; background: var(--glass); border: 1px solid var(--edge); border-radius: 24px; box-shadow: var(--hl), var(--shadow); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); }
+[data-theme="glass"] .bar { display: flex; align-items: center; gap: 8px; }
+[data-theme="glass"] .brand { flex: 1; display: flex; align-items: baseline; gap: 8px; padding-inline-start: 4px; min-width: 0; }
+[data-theme="glass"] .brand h1 { font: 600 19px/1 var(--font); }
+[data-theme="glass"] .summary { font-size: 12px; color: var(--mute); white-space: nowrap; }
+[data-theme="glass"] .tools { display: flex; gap: 6px; }
+[data-theme="glass"] .ibtn { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--edge); border-radius: 50%; background: var(--chip); box-shadow: var(--hl), 0 1px 2px rgba(17, 19, 24, .06); color: var(--ink-2); }
+[data-theme="glass"] .ibtn:hover { color: var(--ink); }
+[data-theme="glass"] .ibtn.on { background: var(--pri-bg); border-color: transparent; color: var(--pri-fg); }
+[data-theme="glass"] .search { display: flex; align-items: center; gap: 9px; margin-top: 12px; height: 40px; padding: 0 15px; border-radius: 20px; background: var(--field); color: var(--mute); }
+[data-theme="glass"] .search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; padding: 0; font-size: 13.5px; color: var(--ink); }
+[data-theme="glass"] .search input::placeholder { color: var(--mute); }
+[data-theme="glass"] .search kbd { display: none; }
+[data-theme="glass"] .filters { display: flex; gap: 2px; margin-top: 10px; padding: 3px; border-radius: 17px; background: var(--track); }
+[data-theme="glass"] .f { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 28px; padding: 0 8px; border: 0; border-radius: 14px; background: none; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+[data-theme="glass"] .f-n { font-size: 11px; color: var(--mute); }
+[data-theme="glass"] .f.on { background: var(--lens); box-shadow: 0 1px 3px rgba(17, 19, 24, .14), var(--hl); color: var(--ink); font-weight: 600; }
+[data-theme="glass"] .f.on .f-n { color: var(--ink-2); }
+[data-theme="glass"] .f.extra { display: none; }
+[data-theme="glass"] .f.more { display: inline-flex; flex: 0 0 auto; }
+[data-theme="glass"] .f.zero, [data-theme="glass"] .f.zero .f-n { color: var(--mute); }
+[data-theme="glass"] .here { display: flex; align-items: center; gap: 8px; margin-top: 11px; padding: 0 5px; font-size: 12.5px; color: var(--ink-2); }
+[data-theme="glass"] .here-mark { width: 8px; height: 8px; border-radius: 50%; background: var(--gc); box-shadow: 0 0 8px var(--gc); }
+[data-theme="glass"] .here b { font-weight: 600; color: var(--ink); }
+
+/* ---------- cards ---------- */
+[data-theme="glass"] .sect-h { display: flex; align-items: baseline; gap: 6px; padding: 20px 12px 9px; font: 600 13px/1 var(--font); color: var(--ink-2); }
+[data-theme="glass"] .sect-h .n { font-weight: 400; color: var(--ink-2); }
+[data-theme="glass"] .stack { display: flex; flex-direction: column; gap: 8px; }
+[data-theme="glass"] .group { padding: 12px 14px; background: linear-gradient(var(--sheen), transparent 55%) var(--glass); border: 1px solid var(--edge); border-radius: 22px; box-shadow: var(--hl), var(--shadow); }
+[data-theme="glass"] .g-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+[data-theme="glass"] .g-mark { display: block; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--gc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gc) 16%, transparent), 0 0 12px color-mix(in srgb, var(--gc) 60%, transparent); }
+[data-theme="glass"] .g-tab { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; font: 600 15px/1.3 var(--font); }
+[data-theme="glass"] .g-un { flex: none; font-weight: 500; color: var(--ink-2); }
+[data-theme="glass"] .g-hosts { min-width: 0; font-size: 12px; font-weight: 400; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme="glass"] .g-pin { color: var(--mute); }
+[data-theme="glass"] .g-info { flex: none; display: flex; align-items: center; gap: 8px; }
+[data-theme="glass"] .g-status { font-size: 12px; color: var(--mute); }
+[data-theme="glass"] .g-count { display: grid; place-items: center; min-width: 26px; height: 24px; padding: 0 8px; border-radius: 12px; background: var(--chip); box-shadow: var(--hl); font-size: 12px; font-weight: 500; color: var(--ink-2); }
+[data-theme="glass"] .g-line { margin-top: 6px; padding-inline-start: 20px; }
+[data-theme="glass"] .g-meta { display: none; }
+[data-theme="glass"] .g-preview { font-size: 12.5px; color: var(--mute); }
+[data-theme="glass"] .g-task, [data-theme="glass"] .g-stale { display: flex; align-items: center; gap: 7px; margin-top: 8px; padding-inline-start: 20px; font-size: 12.5px; }
+[data-theme="glass"] .g-task { color: var(--ink); }
+[data-theme="glass"] .g-task .ic { color: var(--gc); }
+[data-theme="glass"] .g-task .k { display: none; }
+[data-theme="glass"] .g-stale { color: var(--warn); font-weight: 500; }
+
+/* ---------- the open card ---------- */
+[data-theme="glass"] .group.open { padding: 15px 14px 16px; background: var(--glass-hi); border-radius: 26px; box-shadow: var(--hl), var(--shadow-hi); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); }
+[data-theme="glass"] .group.open .g-tab { font-size: 16.5px; }
+[data-theme="glass"] .group.open .g-line, [data-theme="glass"] .group.open .g-task, [data-theme="glass"] .group.open .g-stale { display: none; }
+[data-theme="glass"] .g-meta2 { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; font-size: 12px; color: var(--mute); }
+[data-theme="glass"] .pick { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid var(--edge); border-radius: 15px; background: var(--chip); box-shadow: var(--hl), 0 1px 2px rgba(17, 19, 24, .06); font-size: 12.5px; font-weight: 500; color: var(--ink); }
+[data-theme="glass"] .g-meta2 .live { color: var(--live); font-weight: 500; }
+[data-theme="glass"] .g-meta2 .sp { flex: 1; }
+[data-theme="glass"] .items { margin: 2px -6px 0; }
+[data-theme="glass"] .it { position: relative; display: grid; grid-template-columns: 32px 1fr auto; column-gap: 11px; align-items: center; padding: 6px; border-radius: 16px; }
+[data-theme="glass"] .it-fav { grid-column: 1; grid-row: 1; position: relative; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: var(--tile); box-shadow: var(--hl), 0 1px 3px rgba(17, 19, 24, .1); }
+[data-theme="glass"] .it-main { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-width: 0; }
+[data-theme="glass"] .it .t { font-size: 13.5px; font-weight: 500; line-height: 1.35; }
+[data-theme="glass"] .it .h { font-size: 11.5px; line-height: 1.3; color: var(--mute); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme="glass"] .it .acts { grid-column: 3; grid-row: 1; gap: 4px; }
+[data-theme="glass"] .acts button { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--edge); border-radius: 50%; background: var(--chip); box-shadow: var(--hl); color: var(--ink-2); }
+[data-theme="glass"] .acts .ic { width: 13px; height: 13px; }
+[data-theme="glass"] .it:is(:hover, :focus-within) { background: var(--row-hover); }
+[data-theme="glass"] .it.active .t { font-weight: 600; }
+[data-theme="glass"] .it.active .it-fav::after { content: ""; position: absolute; inset-inline-end: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 50%; background: var(--live); border: 2px solid var(--tile); box-sizing: border-box; }
+[data-theme="glass"] .it .note { grid-column: 2 / 4; grid-row: 2; display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 12.5px; color: var(--ink-2); }
+[data-theme="glass"] .it .note .ic { color: var(--gc); }
+[data-theme="glass"] .it.notopen .it-fav { opacity: .45; }
+[data-theme="glass"] .it.notopen .t { color: var(--mute); font-weight: 400; }
+[data-theme="glass"] .it.notopen .fav { filter: grayscale(1); }
+[data-theme="glass"] .taskin { display: flex; align-items: center; gap: 8px; margin-top: 12px; height: 42px; padding: 0 16px; border-radius: 21px; background: var(--field); }
+[data-theme="glass"] .taskin .k { display: none; }
+[data-theme="glass"] .taskin input { flex: 1; min-width: 0; border: 0; background: none; outline: none; padding: 0; font-size: 13px; color: var(--ink); }
+[data-theme="glass"] .taskin input::placeholder { color: var(--mute); }
+[data-theme="glass"] .claude { display: flex; gap: 8px; margin-top: 12px; }
+[data-theme="glass"] .btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 44px; border: 1px solid var(--edge); border-radius: 22px; background: var(--chip); box-shadow: var(--hl), 0 1px 2px rgba(17, 19, 24, .06); font: 500 13.5px/1 var(--font); color: var(--ink); }
+[data-theme="glass"] .btn.pri { background: linear-gradient(rgba(255, 255, 255, .14), rgba(255, 255, 255, 0)) var(--pri-bg); border-color: transparent; color: var(--pri-fg); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 8px 18px -8px rgba(17, 19, 24, .55); }
+[data-theme="glass"] .gacts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 16px; }
+[data-theme="glass"] .ga { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font-size: 11px; color: var(--ink-2); }
+[data-theme="glass"] .ga .ic { box-sizing: content-box; width: 16px; height: 16px; padding: 10px; border: 1px solid var(--edge); border-radius: 50%; background: var(--chip); box-shadow: var(--hl), 0 1px 2px rgba(17, 19, 24, .06); color: var(--ink); }
+
+/* ---------- settings: grouped lists on frosted cards ---------- */
+[data-theme="glass"] .settings { margin-top: 12px; }
+[data-theme="glass"] .s-head { display: flex; align-items: center; gap: 10px; padding: 4px 4px 14px; }
+[data-theme="glass"] .s-head h2 { font: 600 21px/1 var(--font); }
+[data-theme="glass"] .s-sec { margin-bottom: 16px; }
+[data-theme="glass"] .s-t { display: block; padding: 0 14px 7px; font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+[data-theme="glass"] .s-rows { padding: 0 16px; background: var(--glass); border: 1px solid var(--edge); border-radius: 22px; box-shadow: var(--hl), var(--shadow); }
+[data-theme="glass"] .s-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+[data-theme="glass"] .s-row:last-child { border-bottom: 0; }
+[data-theme="glass"] .s-row.col { flex-direction: column; align-items: stretch; gap: 9px; }
+[data-theme="glass"] .s-l { font-size: 13.5px; font-weight: 500; }
+[data-theme="glass"] .s-hint { font-size: 12px; color: var(--mute); }
+[data-theme="glass"] .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 15px; background: var(--track); }
+[data-theme="glass"] .s-row.col .seg { display: flex; }
+[data-theme="glass"] .seg button { flex: 1; height: 28px; padding: 0 11px; border: 0; border-radius: 12px; background: none; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+[data-theme="glass"] .seg button.on { background: var(--lens); box-shadow: 0 1px 3px rgba(17, 19, 24, .14), var(--hl); color: var(--ink); font-weight: 600; }
+[data-theme="glass"] .btn.sm { flex: none; height: 32px; padding: 0 14px; border-radius: 16px; font-size: 12.5px; }
+[data-theme="glass"] .btn.sm .ic { width: 14px; height: 14px; }
+[data-theme="glass"] .path { width: 100%; height: 40px; padding: 0 16px; border: 0; border-radius: 20px; background: var(--field); font-size: 13px; outline: none; }
+[data-theme="glass"] .path::placeholder { color: var(--mute); }
+[data-theme="glass"] .num { font-size: 13px; color: var(--ink-2); }
+[data-theme="glass"] .num input { width: 46px; height: 32px; border: 0; border-radius: 16px; background: var(--field); text-align: center; font-size: 13.5px; }
+[data-theme="glass"] kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border: 1px solid var(--edge); border-radius: 8px; background: var(--chip); box-shadow: var(--hl), 0 1px 2px rgba(17, 19, 24, .1); font-size: 12px; font-weight: 500; }
+[data-theme="glass"] .lnk { margin-inline-start: 6px; padding: 0; border: 0; background: none; font-size: 12.5px; font-weight: 500; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+[data-theme="glass"] .themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+[data-theme="glass"] .th { display: flex; flex-direction: column; gap: 7px; padding: 6px 6px 8px; border: 1px solid var(--edge); border-radius: 18px; background: var(--chip); box-shadow: var(--hl); font-size: 12.5px; color: var(--ink-2); }
+[data-theme="glass"] .th .th-pv { border-radius: 12px; }
+[data-theme="glass"] .th.on { outline: 2px solid var(--ink); outline-offset: 1px; color: var(--ink); font-weight: 600; }
+[data-theme="glass"] .s-foot { padding: 0 8px; text-align: center; font-size: 11.5px; color: var(--ink-2); }
+
+/* Solid surfaces when the Mac asks for less transparency. */
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme="glass"] { --glass: #f8f9fb; --glass-hi: #fff; }
+  [data-theme="glass"][data-mode="dark"] { --glass: #1c1e25; --glass-hi: #262833; }
+  [data-theme="glass"] .top, [data-theme="glass"] .group.open { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
