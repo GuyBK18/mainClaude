@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>כרטיסיות</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="top">
+    <div class="bar">
+      <div class="title">
+        <h1>כרטיסיות</h1>
+        <span id="summary" class="summary"></span>
+      </div>
+      <button id="addBtn" class="ibtn" type="button" title="הוספת הלשונית הנוכחית" aria-label="הוספת הלשונית הנוכחית"></button>
+      <button id="settingsBtn" class="ibtn" type="button" title="הגדרות" aria-label="הגדרות"></button>
+    </div>
+
+    <section id="addPanel" class="drawer" hidden>
+      <label for="addTarget">הלשונית הנוכחית אל</label>
+      <div class="line">
+        <select id="addTarget"></select>
+        <button id="addGo" class="btn ink" type="button">הוספה</button>
+      </div>
+    </section>
+
+    <section id="settingsPanel" class="drawer" hidden>
+      <div class="field">
+        <label for="chatTarget">צ'אט עם קלוד נפתח</label>
+        <select id="chatTarget">
+          <option value="app">באפליקציה</option>
+          <option value="web">באתר</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="codeTarget">קלוד קוד נפתח</label>
+        <select id="codeTarget">
+          <option value="app">באפליקציה</option>
+          <option value="web">באתר</option>
+        </select>
+      </div>
+      <div class="field col">
+        <label for="codeFolder">תיקיית עבודה לקלוד קוד</label>
+        <input id="codeFolder" type="text" dir="ltr" placeholder="/Users/guy/Projects">
+        <span class="hint">לא חובה. רק באפליקציה, והיא תבקש אישור.</span>
+      </div>
+      <div class="field">
+        <span class="lbl">גיבוי</span>
+        <div class="links">
+          <button id="exportBtn" class="tbtn" type="button">ייצוא</button>
+          <button id="importBtn" class="tbtn" type="button">ייבוא</button>
+          <input id="importFile" type="file" accept="application/json" hidden>
+        </div>
+      </div>
+    </section>
+
+    <div class="searchrow">
+      <span id="searchIcon" class="sicon" aria-hidden="true"></span>
+      <input id="search" type="search" placeholder="חיפוש" autocomplete="off" aria-label="חיפוש בשמות, בפריטים ובמשימות">
+    </div>
+    <nav id="chips" class="tabs" role="tablist"></nav>
+  </header>
+
+  <main id="list"></main>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
