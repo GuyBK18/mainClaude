@@ -518,7 +518,7 @@ function openMenu(anchor, entries, title) {
   var top = r.bottom + 4;
   if (top + el.offsetHeight > innerHeight - 8) top = Math.max(8, r.top - el.offsetHeight - 4);
   el.style.top = top + 'px';
-  el.style.right = Math.max(8, innerWidth - r.right) + 'px';
+  el.style.right = Math.max(8, Math.min(innerWidth - r.right, innerWidth - el.offsetWidth - 8)) + 'px';
   menu = { el: el, entries: entries, anchor: anchor };
   var first = el.querySelector('button:not([disabled])');
   if (first) first.focus();
