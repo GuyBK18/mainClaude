@@ -233,7 +233,7 @@ function runon(items) {
 function nameHTML(g, dupName) {
   if (ui.editing === 'g:' + g.id) return '<input class="edit g-edit" dir="auto" value="' + esc(g.name) + '" placeholder="שם לקבוצה" aria-label="שם הקבוצה">';
   if (!g.name) return '<span class="g-un">ללא שם</span><span class="g-hosts" dir="ltr">' + esc(topHosts(g)) + '</span>';
-  return '<span class="g-name" dir="auto" title="לחיצה כפולה לשינוי השם">' + esc(g.name) + '</span>' +
+  return '<span class="g-name" dir="auto">' + esc(g.name) + '</span>' +
     (dupName ? '<span class="g-hosts" dir="ltr">' + esc(topHosts(g)) + '</span>' : '');
 }
 function itemHTML(g, it, ctx) {
@@ -835,10 +835,6 @@ document.addEventListener('click', function (e) {
     case 'trashDelete': act({ type: 'purgeTrash', trashId: el.closest('[data-trash]').dataset.trash }); break;
     case 'trashEmpty': act({ type: 'purgeTrash' }); break;
   }
-});
-document.addEventListener('dblclick', function (e) {
-  var n = e.target.closest('.g-name, .g-un');
-  if (n) { var g = groupOf(n); if (g) startEdit('g:' + g.id); }
 });
 // לחיצה על פריט פותחת אותו. לחיצה עם Cmd או בגלגלת פותחת ברקע.
 document.addEventListener('mouseup', function (e) {
