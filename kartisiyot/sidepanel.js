@@ -295,8 +295,11 @@ function groupHTML(g, items, ctx) {
     (g.status !== 'none' ? '<span class="g-status">' + STATUS[g.status] + '</span>' : '') +
     '<span class="g-count" title="' + g.items.length + ' פריטים">' + g.items.length + '</span>' +
     '<span class="g-age">' + (stale ? icon('clock', 12) : '') + '<span>' + esc(age) + '</span></span></div></div>';
-  var favs = items.slice(0, 8).map(function (it) { return favicon(it.url, 16); }).join('');
-  var card = '<div class="g-card">' + '<div class="g-favs">' + (favs || '<span class="g-none">ריקה</span>') + '</div>' +
+  // בריבוע: אתר אחד לכל אייקון, עד ארבעה, ואחריהם מספר הפריטים
+  var seen = new Set(), sites = g.items.filter(function (it) { var h = hostOf(it.url); return !seen.has(h) && seen.add(h); });
+  var favs = sites.slice(0, 4).map(function (it) { return '<span class="fv" title="' + esc(hostOf(it.url)) + '">' + favicon(it.url, 16) + '</span>'; }).join('');
+  var card = '<div class="g-card">' + '<div class="g-favs"><span class="fvs">' + favs + (sites.length > 4 ? '<span class="fv more" dir="ltr">+' + (sites.length - 4) + '</span>' : '') + '</span>' +
+    '<span class="g-n">' + (g.items.length ? g.items.length + (g.items.length === 1 ? ' פריט' : ' פריטים') : 'ריקה') + '</span></div>' +
     '<div class="g-line"><p class="g-preview">' + runon(items) + '</p><span class="g-meta">' +
     (g.status !== 'none' ? '<span>' + STATUS[g.status] + '</span>' : '') + '<b>' + g.items.length + '</b></span></div>' +
     ((g.task || '').trim() ? '<p class="g-task">' + icon('note', 13) + '<span class="k">משימה</span><span class="t" dir="auto">' + esc(g.task) + '</span></p>' : '') +
