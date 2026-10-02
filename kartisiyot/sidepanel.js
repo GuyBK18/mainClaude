@@ -1008,13 +1008,17 @@ document.addEventListener('dragend', function () { ui.drag = null; ui.gdrag = nu
 
 // ---------- הסבר על כפתור ----------
 // ה-title של כרום מופיע רק אחרי זמן ארוך. כאן ההסבר מופיע אחרי TIP_MS, עם אותו טקסט.
-var TIP_MS = 700, tipTimer = null, tipEl = null;
-function hideTip() { clearTimeout(tipTimer); if (tipEl) tipEl.hidden = true; }
+// אחרי שהסבר הופיע, מעבר לכפתור סמוך (תוך TIP_WARM_MS) מציג את ההסבר שלו מיד.
+var TIP_MS = 700, TIP_WARM_MS = 600, tipTimer = null, tipEl = null, tipWarmUntil = 0;
+function hideTip(e) {
+  clearTimeout(tipTimer);
+  if (tipEl && !tipEl.hidden) { tipEl.hidden = true; tipWarmUntil = e && e.type === 'mouseout' ? Date.now() + TIP_WARM_MS : 0; }
+}
 document.addEventListener('mouseover', function (e) {
   var el = e.target.closest && e.target.closest('[title], [data-tip]');
   if (!el || el.contains(e.relatedTarget)) return;
   if (el.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
-  hideTip();
+  hideTip(e);
   tipTimer = setTimeout(function () {
     if (!document.contains(el) || !el.matches(':hover')) return;
     if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tip'; tipEl.setAttribute('role', 'tooltip'); document.body.appendChild(tipEl); }
@@ -1024,13 +1028,13 @@ document.addEventListener('mouseover', function (e) {
     var top = r.bottom + 6 + h > innerHeight - 4 ? r.top - h - 6 : r.bottom + 6;
     tipEl.style.top = Math.max(4, top) + 'px';
     tipEl.style.left = Math.max(4, Math.min(innerWidth - w - 4, r.left + r.width / 2 - w / 2)) + 'px';
-  }, TIP_MS);
+  }, Date.now() < tipWarmUntil ? 0 : TIP_MS);
 });
 document.addEventListener('mouseout', function (e) {
   var el = e.target.closest && e.target.closest('[data-tip]');
-  if (el && !el.contains(e.relatedTarget)) hideTip();
+  if (el && !el.contains(e.relatedTarget)) hideTip(e);
 });
-['mousedown', 'keydown', 'wheel', 'dragstart'].forEach(function (t) { document.addEventListener(t, hideTip, true); });
+['mousedown', 'keydown', 'wheel', 'dragstart'].forEach(function (t) { document.addEventListener(t, function () { hideTip(); tipWarmUntil = 0; }, true); });
 
 // ---------- אתחול ----------
 async function refreshActive() {
