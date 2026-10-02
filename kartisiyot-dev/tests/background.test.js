@@ -347,3 +347,33 @@ test('errors from Chrome reach the panel in Hebrew', async () => {
   assert.equal(r.ok, false);
   assert.match(r.error, /[֐-׿]/);
 });
+
+test('a group created in the panel stays while empty, takes links without opening them, and changes color', async () => {
+  const b = createBrowser();
+  const gid = b.openGroup('Live', urls(2));
+  await b.reconcile();
+  const { id } = await b.ok({ type: 'createGroup' });
+  await b.reconcile();
+  let g = b.groups().find((x) => x.id === id);
+  assert.ok(g, 'empty manual group is kept');
+  assert.equal(g.items.length, 0);
+  await b.ok({ type: 'addLink', target: id, url: 'https://example.org/a' });
+  const tabsBefore = b.st.tabs.length;
+  const live = b.groups().find((x) => x.name === 'Live');
+  await b.ok({ type: 'addLink', target: live.id, url: 'https://example.org/b' });
+  assert.equal(b.st.tabs.length, tabsBefore, 'no tab is opened');
+  await b.reconcile();
+  assert.equal(b.groups().find((x) => x.id === live.id).items.at(-1).tabId, null, 'link in an open group waits as not open');
+  assert.equal(b.groups().find((x) => x.id === id).items[0].url, 'https://example.org/a');
+  await b.ok({ type: 'setColor', id: live.id, color: 'red' });
+  assert.equal(b.groups().find((x) => x.id === live.id).color, 'red');
+  assert.equal(b.st.groups.find((x) => x.id === gid).color, 'red', 'color reaches Chrome');
+});
+
+test('closing a group records when it was closed', async () => {
+  const b = createBrowser();
+  const gid = b.openGroup('Work', urls(2));
+  await b.reconcile();
+  await b.ok({ type: 'closeGroup', id: b.groups()[0].id });
+  assert.ok(b.groups()[0].closedAt > 0);
+});

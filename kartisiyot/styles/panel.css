@@ -56,3 +56,66 @@
 .tr-acts { display: flex; align-items: center; gap: 4px; }
 .settings .lnk { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+/* מסגרת מיקוד רק בניווט מקלדת (המחלקה kbd נקבעת ב-JS) */
+html:not(.kbd) :focus-visible:not(input, textarea) { outline: none; }
+
+/* העיגול או הריבוע של הצבע: לחיצה מחליפה צבע */
+.g-mark { cursor: pointer; transition: transform .12s; }
+.g-mark:hover { transform: scale(1.25); }
+
+/* פעולות מהירות ליד שם הקבוצה: במעבר עכבר, ותמיד בקבוצה פתוחה */
+.g-qa { display: none; flex: none; align-items: center; gap: 1px; margin-inline-start: 4px; }
+.group:is(:hover, :focus-within) .g-qa, .group.open .g-qa { display: inline-flex; }
+.qa { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ui-mute); }
+.qa:hover { background: var(--ui-hover); color: var(--ui-fg); }
+
+/* הוספת קישור ידנית לקבוצה */
+.addin { display: flex; align-items: center; gap: 8px; min-height: 32px; margin-top: 2px; border-bottom: 1px dashed var(--ui-line); color: var(--ui-mute); cursor: text; }
+.addin input { flex: 1; min-width: 0; padding: 0; border: 0; background: none; outline: none; font-size: 12.5px; color: var(--ui-fg); text-align: right; }
+.addin input::placeholder { color: var(--ui-mute); }
+.addin:focus-within { color: var(--ui-accent); border-bottom-style: solid; }
+
+/* סידור השמורות */
+.sect-h { align-items: center; }
+.sort-btn { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto; padding: 3px 6px; border: 0; border-radius: 6px; background: none; color: var(--ui-mute); font: inherit; font-weight: 500; }
+.sort-btn:hover { background: var(--ui-hover); color: var(--ui-fg); }
+
+/* בחירת צבע */
+.menu.swatches { min-width: 0; display: grid; grid-template-columns: repeat(5, 26px); gap: 8px; padding: 6px 10px 10px; }
+.menu.swatches .menu-t { grid-column: 1 / -1; padding: 4px 0 0; }
+.menu .sw { width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--sw); }
+.menu .sw:hover, .menu .sw:focus-visible { background: var(--sw); transform: scale(1.12); }
+.menu .sw.on { box-shadow: 0 0 0 2px var(--ui-solid), 0 0 0 4px var(--sw); }
+
+/* גרירת קבוצה */
+.group.gdragging { opacity: .45; }
+.group { position: relative; }
+.group.gd-before::after, .group.gd-after::after { content: ""; position: absolute; z-index: 3; inset-inline: 0; height: 3px; border-radius: 2px; background: var(--ui-accent); pointer-events: none; }
+.group.gd-before::after { top: -5px; }
+.group.gd-after::after { bottom: -5px; }
+[data-layout="tiles"] .group.gd-before::after, [data-layout="tiles"] .group.gd-after::after { inset-block: 0; inset-inline: auto; width: 3px; height: auto; }
+[data-layout="tiles"] .group.gd-before::after { inset-inline-start: -6px; }
+[data-layout="tiles"] .group.gd-after::after { inset-inline-end: -6px; }
+
+/* תצוגת ריבועים */
+.g-favs { display: none; flex-wrap: wrap; gap: 6px; min-height: 16px; }
+.g-none { font-size: 11.5px; color: var(--ui-mute); }
+[data-layout="tiles"] .stack { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; align-items: start; }
+[data-layout="tiles"] .group { margin: 0; min-width: 0; }
+[data-layout="tiles"] .group.open { grid-column: 1 / -1; }
+[data-layout="tiles"] .group:not(.open) :is(.g-line, .g-task, .g-stale, .g-status, .g-age, .g-st) { display: none; }
+[data-layout="tiles"] .group:not(.open) .g-favs { display: flex; margin-top: 8px; }
+[data-layout="tiles"] .group:not(.open) .g-head { position: static; }
+[data-layout="tiles"] .group:not(.open) .g-qa { position: absolute; z-index: 2; inset-inline-end: 6px; bottom: 6px; padding: 2px; background: var(--ui-solid); border: 1px solid var(--ui-line); border-radius: 8px; box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .4); }
+[data-theme="console"][data-layout="tiles"] .group:not(.open) { padding-bottom: 10px; border: 1px solid var(--ui-line); border-radius: 4px; }
+[data-theme="console"][data-layout="tiles"] .g-favs { padding-inline: 12px; }
+[data-theme="console"][data-layout="tiles"] .stack { padding: 6px 10px; }
+[data-theme="glass"][data-layout="tiles"] .g-favs { padding-inline-start: 20px; }
+.brand { min-width: 0; }
+.summary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tools { flex: none; }
+/* בקבוצה פתוחה הסטטוס והזמן מופיעים בגוף הכרטיס, אז בכותרת מפנים מקום לשם ולפעולות */
+.group.open :is(.g-st, .g-age, .g-status) { display: none; }
+[data-theme="console"] .group.open .g-head { grid-template-columns: 12px 1fr 26px; }
+[data-theme="console"][data-layout="tiles"] .group:not(.open) .g-head { grid-template-columns: 12px 1fr auto; }

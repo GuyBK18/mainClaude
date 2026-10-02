@@ -2,6 +2,6 @@
 (function () {
   try {
     var l = JSON.parse(localStorage.getItem('look') || 'null');
-    if (l && l.theme) { document.documentElement.dataset.theme = l.theme; document.documentElement.dataset.mode = l.mode; }
+    if (l && l.theme) { document.documentElement.dataset.theme = l.theme; document.documentElement.dataset.mode = l.mode; document.documentElement.dataset.layout = l.layout || 'rows'; }
   } catch (e) {}
 })();

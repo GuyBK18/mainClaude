@@ -115,7 +115,7 @@ const stored = (b) => b.sw.evaluate(() => chrome.storage.local.get(['groups', 's
   // ---------- panel: undo ----------
   let page = await openPanel(b);
   check(page.errors.length === 0, 'panel loads without errors ' + page.errors.join(' | '));
-  await page.click('[data-gid="' + react.id + '"] .g-head');
+  await page.click('[data-gid="' + react.id + '"] .g-head .g-name');
   const firstItem = '[data-gid="' + react.id + '"] .it:nth-child(3)';
   await page.hover(firstItem);
   await page.click(firstItem + ' [data-act="doneItem"]');

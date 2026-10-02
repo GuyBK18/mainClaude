@@ -11,7 +11,10 @@ var COLORS = {
   grey: ['#5f6368', '#dadce0'], blue: ['#1a73e8', '#8ab4f8'], red: ['#d93025', '#f28b82'], yellow: ['#e8a700', '#fdd663'],
   green: ['#1e8e3e', '#81c995'], pink: ['#d01884', '#ff8bcb'], purple: ['#9334e6', '#d7aefb'], cyan: ['#007b83', '#78d9ec'], orange: ['#e8710a', '#fcad70']
 };
-var DEFAULTS = { theme: 'drawer', mode: 'system', chatTarget: 'app', codeTarget: 'app', codeFolder: '', staleDays: 14, lastExport: null };
+var COLOR_NAMES = { grey: 'אפור', blue: 'כחול', red: 'אדום', yellow: 'צהוב', green: 'ירוק', pink: 'ורוד', purple: 'סגול', cyan: 'טורקיז', orange: 'כתום' };
+var SORTS = [['recent', 'שימוש אחרון'], ['closed', 'תאריך סגירה'], ['created', 'תאריך יצירה'], ['name', 'שם'], ['status', 'סטטוס'], ['size', 'מספר פריטים'], ['manual', 'סידור אישי']];
+var STATUS_RANK = { working: 0, watch: 1, read: 2, skim: 3, none: 4, archive: 5 };
+var DEFAULTS = { theme: 'drawer', mode: 'system', layout: 'rows', sort: 'recent', order: [], chatTarget: 'app', codeTarget: 'app', codeFolder: '', staleDays: 14, lastExport: null, askedHosts: false };
 var APP_LIMIT = 14000;   // אפליקציית קלוד חותכת בערך ב-14,000 תווים
 var WEB_LIMIT = 7000;    // אורך הקישור המקודד לאתר
 
@@ -30,6 +33,8 @@ var ICONS = {
   closeSave: '<path d="M4 5h16v4H4zM6 9v10h12V9M10 13h4"/>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M15 9V5.5A1.5 1.5 0 0 0 13.5 4h-8A1.5 1.5 0 0 0 4 5.5v8A1.5 1.5 0 0 0 5.5 15H9"/>',
   merge: '<path d="M7 4v5a5 5 0 0 0 5 5h7M16 11l3 3-3 3M7 20v-3"/>',
+  dot: '<circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/>',
+  blank: '',
   pin: '<path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/>',
   trash: '<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5M14 11v5"/>',
   undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
@@ -53,7 +58,11 @@ var ICONS = {
   download: '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
   upload: '<path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/>',
   back: '<path d="M5 12h14M13 6l6 6-6 6"/>',
-  layers: '<path d="m12 4 9 4.5-9 4.5-9-4.5z"/><path d="m3 13 9 4.5 9-4.5"/>'
+  layers: '<path d="m12 4 9 4.5-9 4.5-9-4.5z"/><path d="m3 13 9 4.5 9-4.5"/>',
+  tiles: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  rows: '<path d="M4 6.5h16M4 12h16M4 17.5h16"/>',
+  sort: '<path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M13 6h8M13 11h6M13 16h4"/>',
+  link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>'
 };
 function icon(name, size) {
   var s = size || 16;
@@ -148,7 +157,8 @@ function applyLook() {
   var root = document.documentElement;
   root.dataset.theme = ['drawer', 'console', 'glass'].indexOf(S.settings.theme) >= 0 ? S.settings.theme : 'drawer';
   root.dataset.mode = effectiveMode();
-  try { localStorage.setItem('look', JSON.stringify({ theme: root.dataset.theme, mode: root.dataset.mode })); } catch (e) {}
+  root.dataset.layout = S.settings.layout === 'tiles' ? 'tiles' : 'rows';
+  try { localStorage.setItem('look', JSON.stringify({ theme: root.dataset.theme, mode: root.dataset.mode, layout: root.dataset.layout })); } catch (e) {}
   var live = S.groups.filter(isLive);
   root.style.setProperty('--amb-1', live[0] ? gc(live[0]) : '#8a8f99');
   root.style.setProperty('--amb-2', live[1] ? gc(live[1]) : (live[0] ? gc(live[0]) : '#8a8f99'));
@@ -156,6 +166,10 @@ function applyLook() {
   $('btnMode').innerHTML = icon(dark ? 'sun' : 'moon', 17);
   $('btnMode').title = dark ? 'מעבר למצב בהיר' : 'מעבר למצב כהה';
   $('btnMode').setAttribute('aria-label', $('btnMode').title);
+  var tiles = root.dataset.layout === 'tiles';
+  $('btnLayout').innerHTML = icon(tiles ? 'rows' : 'tiles', 17);
+  $('btnLayout').title = tiles ? 'תצוגת שורות' : 'תצוגת ריבועים';
+  $('btnLayout').setAttribute('aria-label', $('btnLayout').title);
 }
 function saveSettings(patch) {
   S.settings = Object.assign({}, S.settings, patch);
@@ -182,8 +196,25 @@ function searchResult(g) {
   var items = g.items.filter(function (it) { return hit(displayTitle(it)) || hit(it.url) || hit(it.note); });
   return items.length ? items : null;
 }
-// הסדר של השמורות קבוע כל עוד החלונית פתוחה, כדי שכרטיס לא יקפוץ מתחת לעכבר
+function sortCmp(mode) {
+  var desc = function (f) { return function (a, b) { return (f(b) || 0) - (f(a) || 0); }; };
+  var recent = desc(function (g) { return g.lastActiveAt; });
+  if (mode === 'closed') return desc(function (g) { return g.closedAt || g.updatedAt; });
+  if (mode === 'created') return desc(function (g) { return g.createdAt; });
+  if (mode === 'size') return function (a, b) { return (b.items.length - a.items.length) || recent(a, b); };
+  if (mode === 'status') return function (a, b) { return (STATUS_RANK[a.status] - STATUS_RANK[b.status]) || recent(a, b); };
+  if (mode === 'name') return function (a, b) { return (!a.name - !b.name) || a.name.localeCompare(b.name, 'he') || recent(a, b); };
+  if (mode === 'manual') {
+    var pos = new Map((S.settings.order || []).map(function (id, i) { return [id, i]; }));
+    var at = function (g) { return pos.has(g.id) ? pos.get(g.id) : -1; };   // קבוצה חדשה עולה לראש
+    return function (a, b) { return (at(a) - at(b)) || recent(a, b); };
+  }
+  return null;
+}
+// בשימוש אחרון, הסדר קבוע כל עוד החלונית פתוחה, כדי שכרטיס לא יקפוץ מתחת לעכבר
 function savedOrder(list) {
+  var cmp = sortCmp(S.settings.sort);
+  if (cmp) return list.slice().sort(function (a, b) { return (b.pinned - a.pinned) || cmp(a, b); });
   var byActivity = function (a, b) { return (b.lastActiveAt || 0) - (a.lastActiveAt || 0); };
   if (!ui.order) ui.order = S.groups.filter(function (g) { return !isLive(g); }).sort(byActivity).map(function (g) { return g.id; });
   var known = new Set(ui.order);
@@ -239,31 +270,33 @@ function bodyHTML(g, items, ctx) {
     (live ? '<span class="live">פתוחה בכרום</span>' : '<span class="nopen">נשמרה ' + esc(ago(g.updatedAt)) + '</span>') +
     '<span class="sp"></span>' + (notOpen ? '<span class="nopen">' + (g.items.length - notOpen) + ' מתוך ' + g.items.length + ' פתוחים</span>' : '') + '</div>' +
     '<ul class="items">' + items.map(function (it) { return itemHTML(g, it, ctx); }).join('') + '</ul>' +
+    '<label class="addin">' + icon('link', 14) + '<input data-act="addLink" dir="ltr" list="tabUrls" placeholder="הוספת קישור: להדביק כתובת וללחוץ Enter" aria-label="הוספת קישור לקבוצה"></label>' +
     '<label class="taskin"><span class="k">משימה</span><input data-act="task" dir="auto" value="' + esc(g.task) + '" placeholder="מה לעשות עם הקבוצה. יישלח לקלוד עם הקישורים"></label>' +
     '<div class="claude"><button type="button" class="btn pri" data-act="claude-chat">' + icon('chat', 15) + '<span>צ׳אט עם קלוד</span></button>' +
     '<button type="button" class="btn sec" data-act="claude-code">' + icon('terminal', 15) + '<span>קלוד קוד</span></button></div>' +
-    '<div class="gacts">' +
-    (live
-      ? '<button type="button" class="ga" data-act="openGroup" title="הצגה בכרום">' + icon('window', 15) + '<span>הצגה בכרום</span></button>' +
-        '<button type="button" class="ga" data-act="closeGroup" title="סגירה בכרום, הקבוצה נשארת כאן">' + icon('closeSave', 15) + '<span>סגירה ושמירה</span></button>'
-      : '<button type="button" class="ga" data-act="openGroup" title="פתיחת כל הקישורים כקבוצה בכרום">' + icon('window', 15) + '<span>פתיחת הכול</span></button>') +
-    '<button type="button" class="ga" data-act="copy" title="העתקת הכותרות והקישורים">' + icon('copy', 15) + '<span>העתקה</span></button>' +
-    '<button type="button" class="ga" data-act="groupMenu" title="עוד פעולות">' + icon('more', 15) + '<span>עוד</span></button>' +
-    '</div></div>';
+    '</div>';
+}
+function quickActs(g) {
+  var b = function (act, ic, title) { return '<button type="button" class="qa" data-act="' + act + '" title="' + title + '" aria-label="' + title + '">' + icon(ic, 14) + '</button>'; };
+  return '<span class="g-qa">' +
+    (isLive(g) ? b('openGroup', 'window', 'הצגה בכרום') + b('closeGroup', 'closeSave', 'סגירה ושמירה') : b('openGroup', 'window', 'פתיחת הכול בכרום')) +
+    b('claude-chat', 'chat', 'צ׳אט עם קלוד') + b('copy', 'copy', 'העתקת הקישורים') + b('groupMenu', 'more', 'עוד פעולות') + '</span>';
 }
 function groupHTML(g, items, ctx) {
   var open = ui.expanded.has(g.id) || !!ui.query.trim();
   var stale = isStale(g);
   var cls = 'group' + (open ? ' open' : '') + (stale ? ' stale' : '') + (isLive(g) ? ' live' : '') + (g.name ? '' : ' unnamed') + (g.pinned ? ' pinned' : '');
   var age = isLive(g) ? 'פתוחה' : stale ? staleText(g).replace('לא נפתחה כבר ', '') : ago(g.lastActiveAt).replace('לפני ', '');
-  var head = '<div class="g-head" data-act="toggle" data-nav tabindex="0" role="button" aria-expanded="' + open + '">' +
-    '<span class="g-mark"></span><div class="g-tab"><span class="g-chev">' + icon('chevronDown', 13) + '</span>' +
-    (g.pinned ? '<span class="g-pin" title="נעוצה">' + icon('pin', 12) + '</span>' : '') + nameHTML(g, ctx.dupNames.has(g.name)) + '</div>' +
+  var editing = ui.editing === 'g:' + g.id;
+  var head = '<div class="g-head" data-act="toggle" data-nav tabindex="0" role="button" aria-expanded="' + open + '"' + (!isLive(g) && !editing ? ' draggable="true"' : '') + '>' +
+    '<span class="g-mark" data-act="color" title="החלפת צבע"></span><div class="g-tab"><span class="g-chev">' + icon('chevronDown', 13) + '</span>' +
+    (g.pinned ? '<span class="g-pin" title="נעוצה">' + icon('pin', 12) + '</span>' : '') + nameHTML(g, ctx.dupNames.has(g.name)) + (editing ? '' : quickActs(g)) + '</div>' +
     '<div class="g-info"><span class="g-st st-' + g.status + '" title="' + STATUS[g.status] + '">' + icon(STATUS_ICON[g.status], 14) + '</span>' +
     (g.status !== 'none' ? '<span class="g-status">' + STATUS[g.status] + '</span>' : '') +
     '<span class="g-count" title="' + g.items.length + ' פריטים">' + g.items.length + '</span>' +
     '<span class="g-age">' + (stale ? icon('clock', 12) : '') + '<span>' + esc(age) + '</span></span></div></div>';
-  var card = '<div class="g-card">' +
+  var favs = items.slice(0, 8).map(function (it) { return favicon(it.url, 16); }).join('');
+  var card = '<div class="g-card">' + '<div class="g-favs">' + (favs || '<span class="g-none">ריקה</span>') + '</div>' +
     '<div class="g-line"><p class="g-preview">' + runon(items) + '</p><span class="g-meta">' +
     (g.status !== 'none' ? '<span>' + STATUS[g.status] + '</span>' : '') + '<b>' + g.items.length + '</b></span></div>' +
     ((g.task || '').trim() ? '<p class="g-task">' + icon('note', 13) + '<span class="k">משימה</span><span class="t" dir="auto">' + esc(g.task) + '</span></p>' : '') +
@@ -272,7 +305,11 @@ function groupHTML(g, items, ctx) {
   return '<article class="' + cls + '" data-gid="' + g.id + '" style="--gc:' + gc(g) + '">' + head + card + '</article>';
 }
 function toEl(html) { var t = document.createElement('template'); t.innerHTML = html; return t.content.firstElementChild; }
-function isTyping() { var a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT') && a.id !== 'search'; }
+function isTyping() {
+  var a = document.activeElement;
+  if (!a || a.id === 'search' || (a.dataset.act === 'addLink' && !a.value)) return false;
+  return a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT';
+}
 
 function renderList() {
   var list = $('list');
@@ -310,7 +347,7 @@ function renderList() {
     var el = toEl(groupHTML(x.g, x.items, ctx));
     if (c && c.el.contains(document.activeElement)) {
       var gidFocus = document.activeElement.closest('[data-iid]');
-      var sel = gidFocus ? '[data-iid="' + gidFocus.dataset.iid + '"]' : '.g-head';
+      var sel = gidFocus ? '[data-iid="' + gidFocus.dataset.iid + '"]' : document.activeElement.dataset.act === 'addLink' ? '[data-act="addLink"]' : '.g-head';
       c.el.replaceWith(el);
       var again = el.querySelector(sel);
       if (again) again.focus({ preventScroll: true });
@@ -321,7 +358,14 @@ function renderList() {
   function section(key, title, arr) {
     var sec = list.querySelector('section[data-sect="' + key + '"]');
     if (!arr.length) { if (sec) sec.remove(); return null; }
-    if (!sec) sec = toEl('<section class="sect" data-sect="' + key + '"><h2 class="sect-h"><span></span><span class="n"></span></h2><div class="stack"></div></section>');
+    if (!sec) sec = toEl('<section class="sect" data-sect="' + key + '"><h2 class="sect-h"><span></span><span class="n"></span>' +
+      (key === 'saved' ? '<button type="button" class="sort-btn" data-act="sortMenu"></button>' : '') + '</h2><div class="stack"></div></section>');
+    var sb = sec.querySelector('.sort-btn');
+    if (sb) {
+      var cur = SORTS.find(function (o) { return o[0] === S.settings.sort; }) || SORTS[0];
+      sb.innerHTML = icon('sort', 13) + '<span>' + cur[1] + '</span>' + icon('chevronDown', 11);
+      sb.title = 'סידור הקבוצות השמורות';
+    }
     sec.querySelector('.sect-h span').textContent = title;
     sec.querySelector('.sect-h .n').textContent = arr.length;
     var stack = sec.querySelector('.stack');
@@ -504,12 +548,13 @@ function openInClaude(kind, g) {
 // ---------- תפריטים ----------
 var menu = null;
 function closeMenu() { if (menu) { menu.el.remove(); var a = menu.anchor; menu = null; if (a && document.contains(a)) a.focus({ preventScroll: true }); } }
-function openMenu(anchor, entries, title) {
+function openMenu(anchor, entries, title, cls) {
   closeMenu();
   var el = document.createElement('div');
-  el.className = 'menu'; el.setAttribute('role', 'menu');
+  el.className = 'menu' + (cls ? ' ' + cls : ''); el.setAttribute('role', 'menu');
   el.innerHTML = (title ? '<p class="menu-t">' + esc(title) + '</p>' : '') + entries.map(function (e, i) {
     if (e.sep) return '<hr>';
+    if (e.swatch) return '<button type="button" role="menuitemradio" class="sw' + (e.on ? ' on' : '') + '" aria-checked="' + !!e.on + '" data-mi="' + i + '" style="--sw:' + e.swatch + '" title="' + esc(e.label) + '" aria-label="' + esc(e.label) + '"></button>';
     return '<button type="button" role="menuitem" data-mi="' + i + '"' + (e.disabled ? ' disabled' : '') + (e.danger ? ' class="danger"' : '') + '>' +
       (e.icon ? icon(e.icon, 14) : '') + '<span dir="auto">' + esc(e.label) + '</span>' + (e.hint ? '<small>' + esc(e.hint) + '</small>' : '') + '</button>';
   }).join('');
@@ -530,12 +575,83 @@ function targetEntries(exclude, run) {
   });
   return list.map(function (g) { return { label: groupLabel(g), hint: isLive(g) ? 'פתוחה' : '', icon: isLive(g) ? 'window' : 'box', run: function () { run(g); } }; });
 }
+function colorMenu(anchor, g) {
+  var dark = document.documentElement.dataset.mode === 'dark';
+  openMenu(anchor, Object.keys(COLORS).map(function (c) {
+    return { swatch: COLORS[c][dark ? 1 : 0], label: COLOR_NAMES[c], on: g.color === c, run: function () { act({ type: 'setColor', id: g.id, color: c }); } };
+  }), 'צבע לקבוצה', 'swatches');
+}
+function sortMenu(anchor) {
+  openMenu(anchor, SORTS.map(function (o) {
+    return { label: o[1], icon: o[0] === S.settings.sort ? 'check' : 'blank', hint: o[0] === 'manual' ? 'גרירה' : '', run: function () {
+      ui.order = null;
+      saveSettings({ sort: o[0] }).then(renderAll);
+    } };
+  }), 'סידור השמורות');
+}
+function newGroup() {
+  act({ type: 'createGroup' }).then(function (r) {
+    if (!r) return;
+    if (!matchesFilter({ status: 'none', items: [], chromeGroupId: null }, ui.filter)) ui.filter = 'all';
+    ui.query = ''; $('search').value = '';
+    ui.expanded.add(r.id);
+    var then = function () {
+      startEdit('g:' + r.id);
+      var c = document.querySelector('#list [data-gid="' + r.id + '"]');
+      if (c) c.scrollIntoView({ block: 'nearest' });
+    };
+    // השינוי באחסון יכול להגיע לפני התשובה או אחריה
+    if (S.groups.some(function (g) { return g.id === r.id; })) { renderAll(); then(); } else ui.afterLoad = then;
+  });
+}
+// כתובת מהדבקה: מוסיפים https אם חסר, ומסננים מה שלא נראה ככתובת
+function normUrl(s) {
+  s = String(s || '').trim().replace(/^[<"']+|[>"',.]+$/g, '');
+  if (!s) return null;
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) s = 'https://' + s;
+  try {
+    var u = new URL(s);
+    if (u.protocol === 'file:') return u.href;
+    if (!/^https?:$/.test(u.protocol) || !(u.hostname.indexOf('.') > 0 || u.hostname === 'localhost')) return null;
+    return u.href;
+  } catch (e) { return null; }
+}
+// בקשת הרשאה לאתרים (לכותרות) פעם אחת. חייבת לצאת מתוך הלחיצה עצמה, לפני כל await.
+function askHosts() {
+  if (S.settings.askedHosts || !chrome.permissions) return Promise.resolve(false);
+  saveSettings({ askedHosts: true });
+  return chrome.permissions.request({ origins: ['<all_urls>'] }).catch(function () { return false; });
+}
+function addLinks(g, input) {
+  var urls = input.value.split(/\s+/).map(normUrl).filter(Boolean);
+  if (!urls.length) { toast(input.value.trim() ? 'זו לא נראית כתובת. למשל: example.com' : 'צריך להדביק כתובת'); return; }
+  input.value = '';
+  // הקישורים נוספים מיד. אם ההרשאה ניתנה עכשיו, הכותרות משלימות אחר כך.
+  askHosts().then(function (granted) { if (granted) act({ type: 'fillTitles', id: g.id }); });
+  (async function () {
+    var added = 0, already = 0;
+    for (var i = 0; i < urls.length; i++) {
+      var r = await act({ type: 'addLink', url: urls[i], target: g.id });
+      if (r && r.already) already++; else if (r) added++;
+    }
+    if (added) toast(added === 1 ? 'הקישור נוסף' + (isLive(g) ? '. הוא לא נפתח בכרום.' : '') : added + ' קישורים נוספו');
+    else if (already) toast('הקישור כבר בקבוצה');
+  })();
+}
+function fillTabList() {
+  var dl = $('tabUrls');
+  chrome.tabs.query({}).then(function (tabs) {
+    var seen = new Set();
+    dl.innerHTML = tabs.filter(function (t) { return /^https?:/.test(t.url || '') && !seen.has(t.url) && seen.add(t.url); }).slice(0, 50)
+      .map(function (t) { return '<option value="' + esc(t.url) + '">' + esc(t.title || '') + '</option>'; }).join('');
+  }).catch(function () {});
+}
 function addMenu(anchor) {
   var t = S.activeTab;
   var ok = t && /^(https?|file):/.test(t.url || '');
-  var entries = [];
+  var entries = [{ label: 'קבוצה חדשה ריקה', hint: 'בלי לפתוח לשוניות', icon: 'plus', run: newGroup }, { sep: true }];
   if (ok) {
-    entries.push({ label: 'קבוצה חדשה בכרום', icon: 'plus', run: function () { act({ type: 'addTab', tabId: t.id, target: 'new' }).then(function (r) { if (r) toast('נוצרה קבוצה חדשה'); }); } });
+    entries.push({ label: 'קבוצה חדשה בכרום', icon: 'window', run: function () { act({ type: 'addTab', tabId: t.id, target: 'new' }).then(function (r) { if (r) toast('נוצרה קבוצה חדשה'); }); } });
     targetEntries(null, function (g) {
       act({ type: 'addTab', tabId: t.id, target: g.id }).then(function (r) { if (r) toast(r.already ? 'הלשונית כבר שמורה בקבוצה הזו' : 'נשמר ב־' + groupLabel(g)); });
     }).forEach(function (e) { entries.push(e); });
@@ -544,12 +660,13 @@ function addMenu(anchor) {
   entries.push({ label: 'כל הלשוניות שלא בקבוצה בחלון הזה', icon: 'layers', run: function () {
     chrome.windows.getCurrent().then(function (w) { return act({ type: 'saveWindow', windowId: w.id }); }).then(function (r) { if (r) toast(r.count + ' לשוניות נאספו לקבוצה חדשה'); });
   } });
-  openMenu(anchor, entries, ok ? 'שמירת הלשונית הנוכחית' : 'אי אפשר לשמור את הלשונית הנוכחית');
+  openMenu(anchor, entries, ok ? 'קבוצה חדשה, או שמירת הלשונית הנוכחית' : 'קבוצה חדשה');
 }
 function groupMenu(anchor, g) {
   var entries = [
     { label: g.pinned ? 'ביטול הנעיצה' : 'נעיצה למעלה', icon: 'pin', run: function () { act({ type: 'setPinned', id: g.id, pinned: !g.pinned }); } },
     { label: 'שינוי שם', icon: 'pencil', run: function () { startEdit('g:' + g.id); } },
+    { label: 'החלפת צבע', icon: 'dot', run: function () { setTimeout(function () { colorMenu(anchor, g); }, 0); } },
     { label: 'מיזוג אל קבוצה אחרת', icon: 'merge', run: function () { mergeMenu(anchor, g); } },
     { label: g.status === 'archive' ? 'הוצאה מהארכיון' : 'העברה לארכיון', icon: 'box', run: function () { act({ type: 'setStatus', id: g.id, status: g.status === 'archive' ? 'none' : 'archive' }); } },
     { sep: true },
@@ -685,6 +802,9 @@ document.addEventListener('click', function (e) {
     case 'closeGroup': act({ type: 'closeGroup', id: g.id }).then(function (r) { if (r) toast('הקבוצה נסגרה בכרום ונשמרה כאן'); }); break;
     case 'copy': copyText(g); break;
     case 'groupMenu': groupMenu(el, g); break;
+    case 'color': colorMenu(el, g); break;
+    case 'sortMenu': sortMenu(el); break;
+    case 'layout': saveSettings({ layout: S.settings.layout === 'tiles' ? 'rows' : 'tiles' }).then(function () { cards.clear(); renderAll(); }); break;
     case 'add': addMenu(el); break;
     case 'mode': saveSettings({ mode: effectiveMode() === 'dark' ? 'light' : 'dark' }).then(function () { cards.clear(); renderAll(); }); break;
     case 'settings': ui.view = ui.view === 'list' ? 'settings' : 'list'; renderAll(); break;
@@ -758,8 +878,12 @@ document.addEventListener('focusout', function (e) {
 document.addEventListener('focusin', function (e) {
   var gEl = e.target.closest && e.target.closest('.group');
   document.querySelectorAll('.group.cursor').forEach(function (n) { if (n !== gEl) n.classList.remove('cursor'); });
-  if (gEl && e.target.matches('[data-nav]')) gEl.classList.add('cursor');
+  if (gEl && e.target.matches('[data-nav]') && document.documentElement.classList.contains('kbd')) gEl.classList.add('cursor');
+  if (e.target.dataset && e.target.dataset.act === 'addLink') fillTabList();
 });
+// מסגרת המיקוד מופיעה רק בניווט במקלדת, לא אחרי לחיצה בעכבר או אחרי שינוי שם
+document.addEventListener('keydown', function (e) { if (e.key === 'Tab' || e.key.indexOf('Arrow') === 0) document.documentElement.classList.add('kbd'); }, true);
+document.addEventListener('pointerdown', function () { document.documentElement.classList.remove('kbd'); }, true);
 document.addEventListener('keydown', function (e) {
   var t = e.target, key = e.key;
   if (menu) {
@@ -782,6 +906,11 @@ document.addEventListener('keydown', function (e) {
     return;
   }
   if (t.dataset && t.dataset.act === 'task') { if (key === 'Enter') t.blur(); return; }
+  if (t.dataset && t.dataset.act === 'addLink') {
+    if (key === 'Enter') { e.preventDefault(); addLinks(groupOf(t), t); }
+    if (key === 'Escape') { t.value = ''; t.blur(); }
+    return;
+  }
   var typing = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT';
   if (typing) return;
   if ((e.metaKey || e.ctrlKey) && key.toLowerCase() === 'z') { if (ui.lastUndo) { e.preventDefault(); undo(ui.lastUndo); } return; }
@@ -804,8 +933,22 @@ document.addEventListener('keydown', function (e) {
 });
 
 // ---------- גרירה ----------
+function dropSide(card, e) {
+  var r = card.getBoundingClientRect();
+  if (document.documentElement.dataset.layout === 'tiles') return e.clientX > r.left + r.width / 2 ? 'before' : 'after';   // RTL: ההתחלה בימין
+  return e.clientY < r.top + r.height / 2 ? 'before' : 'after';
+}
+function savedCard(el) { var c = el.closest && el.closest('.group'); return c && c.closest('[data-sect="saved"]') ? c : null; }
 document.addEventListener('dragstart', function (e) {
   var li = e.target.closest && e.target.closest('.it');
+  var head = !li && e.target.closest && e.target.closest('.g-head');
+  if (head && savedCard(head)) {
+    ui.gdrag = groupOf(head).id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', ui.gdrag);
+    head.closest('.group').classList.add('gdragging');
+    return;
+  }
   if (!li) return;
   var g = groupOf(li);
   ui.drag = { gid: g.id, iid: li.dataset.iid };
@@ -813,8 +956,16 @@ document.addEventListener('dragstart', function (e) {
   e.dataTransfer.setData('text/plain', li.dataset.iid);
   li.classList.add('dragging');
 });
-function clearDrop() { document.querySelectorAll('.drop-before, .drop-into').forEach(function (n) { n.classList.remove('drop-before', 'drop-into'); }); }
+function clearDrop() { document.querySelectorAll('.drop-before, .drop-into, .gd-before, .gd-after').forEach(function (n) { n.classList.remove('drop-before', 'drop-into', 'gd-before', 'gd-after'); }); }
 document.addEventListener('dragover', function (e) {
+  if (ui.gdrag) {
+    var c = savedCard(e.target);
+    if (!c || c.dataset.gid === ui.gdrag) return;
+    e.preventDefault();
+    clearDrop();
+    c.classList.add('gd-' + dropSide(c, e));
+    return;
+  }
   if (!ui.drag) return;
   var li = e.target.closest('.it'), card = e.target.closest('.group');
   if (!card) return;
@@ -824,6 +975,19 @@ document.addEventListener('dragover', function (e) {
   else if (!li) card.classList.add('drop-into');
 });
 document.addEventListener('drop', function (e) {
+  if (ui.gdrag) {
+    var c = savedCard(e.target), id = ui.gdrag;
+    clearDrop();
+    if (!c || c.dataset.gid === id) return;
+    e.preventDefault();
+    // הסדר הנוכחי של כל השמורות (לא רק המסוננות), עם הקבוצה במקום החדש. הסידור עובר ל"סידור אישי".
+    var ids = savedOrder(S.groups.filter(function (g) { return !isLive(g); })).map(function (g) { return g.id; }).filter(function (x) { return x !== id; });
+    var at = ids.indexOf(c.dataset.gid) + (dropSide(c, e) === 'after' ? 1 : 0);
+    ids.splice(at, 0, id);
+    ui.order = null;
+    saveSettings({ sort: 'manual', order: ids }).then(renderAll);
+    return;
+  }
   if (!ui.drag) return;
   var li = e.target.closest('.it'), card = e.target.closest('.group');
   var d = ui.drag;
@@ -835,7 +999,7 @@ document.addEventListener('drop', function (e) {
   if (msg.toId === d.gid && !msg.beforeItemId) return;
   act(msg);
 });
-document.addEventListener('dragend', function () { ui.drag = null; clearDrop(); document.querySelectorAll('.dragging').forEach(function (n) { n.classList.remove('dragging'); }); });
+document.addEventListener('dragend', function () { ui.drag = null; ui.gdrag = null; clearDrop(); document.querySelectorAll('.dragging, .gdragging').forEach(function (n) { n.classList.remove('dragging', 'gdragging'); }); });
 
 // ---------- אתחול ----------
 async function refreshActive() {
@@ -857,12 +1021,14 @@ chrome.storage.onChanged.addListener(function (changes, area) {
   }
   if (changes.groups) { S.groups = changes.groups.newValue || []; applyLook(); }
   renderAll();
+  if (ui.afterLoad && changes.groups) { var f = ui.afterLoad; ui.afterLoad = null; f(); }
 });
 mq.addEventListener('change', function () { applyLook(); cards.clear(); renderAll(); });
 document.addEventListener('visibilitychange', function () { if (!document.hidden) { ui.order = null; renderAll(); } });
 
 $('btnAdd').innerHTML = icon('plus', 18);
 $('btnSettings').innerHTML = icon('sliders', 17);
+$('btnAdd').title = 'קבוצה חדשה או שמירת הלשונית'; $('btnAdd').setAttribute('aria-label', $('btnAdd').title);
 $('searchIcon').innerHTML = icon('search', 15);
 renderKeys();
 chrome.storage.local.get(['groups', 'settings', 'trash']).then(function (r) {

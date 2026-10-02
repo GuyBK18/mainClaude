@@ -72,6 +72,7 @@ function normGroup(g) {
   if (g.chromeGroupId === undefined) g.chromeGroupId = null;
   if (g.windowId === undefined) g.windowId = null;
   g.pinned = !!g.pinned;
+  g.manual = !!g.manual;
   g.openPeak = g.openPeak || 0;
   g.restoreUntil = g.restoreUntil || null;
   g.createdAt = g.createdAt || t;
@@ -93,6 +94,7 @@ function newItem(tab) {
   return normItem({ url: tabUrl(tab), title: cleanTitle(tab.title), favIconUrl: tab.favIconUrl || '' });
 }
 function unlink(g) {
+  if (g.chromeGroupId != null) g.closedAt = now();
   g.chromeGroupId = null; g.windowId = null;
   g.items.forEach(function (it) { it.tabId = null; });
 }
@@ -262,7 +264,7 @@ async function reconcileNow() {
     if (syncGroup(g, cg, ctabs, linking, tabIndex)) changed = true;
   }
 
-  var kept = groups.filter(function (g) { return g.chromeGroupId != null || g.items.length; });
+  var kept = groups.filter(keep);
   if (kept.length !== groups.length) { groups = kept; changed = true; }
   if (trashed.length) await addTrash(trashed);
   if (changed) await save(groups);
@@ -270,12 +272,46 @@ async function reconcileNow() {
 
 // ---------- פעולות מהחלונית ----------
 
+// קבוצה שמורה ריקה נמחקת, חוץ מקבוצה שנוצרה ידנית בחלונית
+function keep(g) { return g.chromeGroupId != null || g.items.length || g.manual; }
+
+// כותרת לקישור שנוסף ידנית, בלי לפתוח אותו. צריך הרשאה לאתרים, שהחלונית מבקשת פעם אחת.
+function decodeHtml(s) {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|#39|nbsp);/gi, function (m, e) {
+    if (e[0] === '#') return String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10));
+    return { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }[e.toLowerCase()];
+  }).replace(/\s+/g, ' ').trim();
+}
+async function fetchTitle(url) {
+  if (typeof fetch !== 'function' || !/^https?:/.test(url)) return '';
+  try {
+    if (!chrome.permissions || !(await chrome.permissions.contains({ origins: ['<all_urls>'] }))) return '';
+    var r = await fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(8000) });
+    if (!r.ok || !/html/i.test(r.headers.get('content-type') || '')) return '';
+    var html = (await r.text()).slice(0, 400000);
+    var m = html.match(/<title[^>]*>([^<]+)<\/title>/i) || html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i);
+    return m ? cleanTitle(decodeHtml(m[1])) : '';
+  } catch (e) { return ''; }
+}
+function fillTitle(groupId, itemId, url) {
+  fetchTitle(url).then(function (title) {
+    if (!title) return;
+    enqueue(function () {
+      return withData(function (groups) {
+        var g = groups.find(function (x) { return x.id === groupId; });
+        var it = g && g.items.find(function (x) { return x.id === itemId; });
+        if (it && !it.title) it.title = title;
+      });
+    });
+  });
+}
+
 async function withData(fn) {
   var snap = await snapshot();
   var groups = await load();
   await ensureBoot(snap, groups);
   var res = await fn(groups, snap);
-  await save(groups.filter(function (x) { return x.chromeGroupId != null || x.items.length; }));
+  await save(groups.filter(keep));
   return res;
 }
 function find(groups, id) {
@@ -512,8 +548,32 @@ var handlers = {
       var g = m.target === 'new' ? null : find(groups, m.target);
       if (!g) { g = newGroup({}); groups.unshift(g); }
       if (g.items.some(function (x) { return pageKey(x.url) === pageKey(m.url); })) return { already: true };
-      g.items.push(normItem({ url: m.url, title: cleanTitle(m.title) })); g.updatedAt = now();
-      return {};
+      var it = normItem({ url: m.url, title: cleanTitle(m.title) });
+      g.items.push(it); g.updatedAt = now();
+      if (!it.title) fillTitle(g.id, it.id, it.url);
+      return { id: g.id };
+    });
+  },
+  fillTitles: function (m) {
+    return withData(function (groups) {
+      var g = find(groups, m.id);
+      g.items.forEach(function (it) { if (!it.title && it.tabId == null) fillTitle(g.id, it.id, it.url); });
+    });
+  },
+  // קבוצה חדשה מהחלונית, ריקה, בלי לפתוח כלום בכרום
+  createGroup: function (m) {
+    return withData(function (groups) {
+      var g = newGroup({ name: String(m.name || '').trim(), color: m.color, manual: true });
+      groups.unshift(g);
+      return { id: g.id };
+    });
+  },
+  setColor: function (m) {
+    if (COLORS.indexOf(m.color) < 0) throw new Error('צבע לא מוכר');
+    return withData(async function (groups) {
+      var g = find(groups, m.id);
+      g.color = m.color; g.updatedAt = now();
+      if (g.chromeGroupId != null) { try { await chrome.tabGroups.update(g.chromeGroupId, { color: g.color }); } catch (e) {} }
     });
   },
   // כל הלשוניות שלא בקבוצה בחלון הופכות לקבוצה חדשה בכרום

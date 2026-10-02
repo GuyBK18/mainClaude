@@ -20,6 +20,7 @@
         <div class="brand"><h1>כרטיסיות</h1><span class="summary" id="summary"></span></div>
         <div class="tools">
           <button class="ibtn" type="button" data-act="add" id="btnAdd" title="שמירת הלשונית הנוכחית" aria-label="שמירת הלשונית הנוכחית"></button>
+          <button class="ibtn" type="button" data-act="layout" id="btnLayout"></button>
           <button class="ibtn" type="button" data-act="mode" id="btnMode"></button>
           <button class="ibtn" type="button" data-act="settings" id="btnSettings" title="הגדרות" aria-label="הגדרות"></button>
         </div>
@@ -36,6 +37,7 @@
     <footer class="keys" id="keys"></footer>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <datalist id="tabUrls"></datalist>
   <input id="importFile" type="file" accept="application/json,.json" hidden>
   <script src="sidepanel.js"></script>
 </body>
