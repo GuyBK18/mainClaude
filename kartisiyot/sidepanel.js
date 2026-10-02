@@ -1006,6 +1006,32 @@ document.addEventListener('drop', function (e) {
 });
 document.addEventListener('dragend', function () { ui.drag = null; ui.gdrag = null; clearDrop(); document.querySelectorAll('.dragging, .gdragging').forEach(function (n) { n.classList.remove('dragging', 'gdragging'); }); });
 
+// ---------- הסבר על כפתור ----------
+// ה-title של כרום מופיע רק אחרי זמן ארוך. כאן ההסבר מופיע אחרי TIP_MS, עם אותו טקסט.
+var TIP_MS = 700, tipTimer = null, tipEl = null;
+function hideTip() { clearTimeout(tipTimer); if (tipEl) tipEl.hidden = true; }
+document.addEventListener('mouseover', function (e) {
+  var el = e.target.closest && e.target.closest('[title], [data-tip]');
+  if (!el || el.contains(e.relatedTarget)) return;
+  if (el.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
+  hideTip();
+  tipTimer = setTimeout(function () {
+    if (!document.contains(el) || !el.matches(':hover')) return;
+    if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tip'; tipEl.setAttribute('role', 'tooltip'); document.body.appendChild(tipEl); }
+    tipEl.textContent = el.dataset.tip;
+    tipEl.hidden = false;
+    var r = el.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    var top = r.bottom + 6 + h > innerHeight - 4 ? r.top - h - 6 : r.bottom + 6;
+    tipEl.style.top = Math.max(4, top) + 'px';
+    tipEl.style.left = Math.max(4, Math.min(innerWidth - w - 4, r.left + r.width / 2 - w / 2)) + 'px';
+  }, TIP_MS);
+});
+document.addEventListener('mouseout', function (e) {
+  var el = e.target.closest && e.target.closest('[data-tip]');
+  if (el && !el.contains(e.relatedTarget)) hideTip();
+});
+['mousedown', 'keydown', 'wheel', 'dragstart'].forEach(function (t) { document.addEventListener(t, hideTip, true); });
+
 // ---------- אתחול ----------
 async function refreshActive() {
   try { var tabs = await chrome.tabs.query({ active: true, currentWindow: true }); S.activeTab = tabs[0] || null; } catch (e) { S.activeTab = null; }

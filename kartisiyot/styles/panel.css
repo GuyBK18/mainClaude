@@ -133,3 +133,6 @@ html:not(.kbd) :focus-visible:not(input, textarea) { outline: none; }
 [data-theme="console"] .group.open .g-head { grid-template-columns: 12px 1fr 26px; }
 [data-theme="console"][data-layout="tiles"] .group:not(.open) .g-head { grid-template-columns: 12px 1fr auto; }
 html[data-layout="tiles"] .cols { display: none; }
+
+/* הסבר על כפתור */
+.tip { position: fixed; z-index: 70; max-width: 260px; padding: 5px 8px; border-radius: 6px; background: var(--ui-fg); color: var(--ui-solid); font-size: 12px; line-height: 1.35; pointer-events: none; overflow-wrap: anywhere; box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .5); }
