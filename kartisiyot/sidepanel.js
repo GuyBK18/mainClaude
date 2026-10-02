@@ -554,6 +554,7 @@ function openMenu(anchor, entries, title, cls) {
   el.className = 'menu' + (cls ? ' ' + cls : ''); el.setAttribute('role', 'menu');
   el.innerHTML = (title ? '<p class="menu-t">' + esc(title) + '</p>' : '') + entries.map(function (e, i) {
     if (e.sep) return '<hr>';
+    if (e.heading) return '<p class="menu-t">' + esc(e.heading) + '</p>';
     if (e.swatch) return '<button type="button" role="menuitemradio" class="sw' + (e.on ? ' on' : '') + '" aria-checked="' + !!e.on + '" data-mi="' + i + '" style="--sw:' + e.swatch + '" title="' + esc(e.label) + '" aria-label="' + esc(e.label) + '"></button>';
     return '<button type="button" role="menuitem" data-mi="' + i + '"' + (e.disabled ? ' disabled' : '') + (e.danger ? ' class="danger"' : '') + '>' +
       (e.icon ? icon(e.icon, 14) : '') + '<span dir="auto">' + esc(e.label) + '</span>' + (e.hint ? '<small>' + esc(e.hint) + '</small>' : '') + '</button>';
@@ -649,8 +650,9 @@ function fillTabList() {
 function addMenu(anchor) {
   var t = S.activeTab;
   var ok = t && /^(https?|file):/.test(t.url || '');
-  var entries = [{ label: 'קבוצה חדשה ריקה', hint: 'בלי לפתוח לשוניות', icon: 'plus', run: newGroup }, { sep: true }];
+  var entries = [{ label: 'קבוצה ריקה חדשה', icon: 'plus', run: newGroup }, { sep: true }];
   if (ok) {
+    entries.push({ heading: 'שמירת הלשונית הנוכחית ב־' });
     entries.push({ label: 'קבוצה חדשה בכרום', icon: 'window', run: function () { act({ type: 'addTab', tabId: t.id, target: 'new' }).then(function (r) { if (r) toast('נוצרה קבוצה חדשה'); }); } });
     targetEntries(null, function (g) {
       act({ type: 'addTab', tabId: t.id, target: g.id }).then(function (r) { if (r) toast(r.already ? 'הלשונית כבר שמורה בקבוצה הזו' : 'נשמר ב־' + groupLabel(g)); });
@@ -660,7 +662,7 @@ function addMenu(anchor) {
   entries.push({ label: 'כל הלשוניות שלא בקבוצה בחלון הזה', icon: 'layers', run: function () {
     chrome.windows.getCurrent().then(function (w) { return act({ type: 'saveWindow', windowId: w.id }); }).then(function (r) { if (r) toast(r.count + ' לשוניות נאספו לקבוצה חדשה'); });
   } });
-  openMenu(anchor, entries, ok ? 'קבוצה חדשה, או שמירת הלשונית הנוכחית' : 'קבוצה חדשה');
+  openMenu(anchor, entries);
 }
 function groupMenu(anchor, g) {
   var entries = [
