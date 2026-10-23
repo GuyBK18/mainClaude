@@ -100,50 +100,9 @@ function displayTitle(it) {
   if (/(^|\.)youtube\.com$|^youtu\.be$/.test(host)) t = t.replace(/\s*[-–]\s*YouTube$/i, '');
   return !t || t === it.url ? host : t;
 }
-// Chrome's local icon cache is instant but only knows pages visited on this computer. When it has nothing
-// (it returns its default globe), use the icon URL saved in the group, which syncs. The choice is kept per page.
-function cachedFav(url) { return chrome.runtime.getURL('/_favicon/?pageUrl=' + encodeURIComponent(url) + '&size=32'); }
-var favSrc = new Map();
-function favicon(it, size) {
-  var saved = /^https?:/.test(it.favIconUrl) ? it.favIconUrl : '';
-  var local = cachedFav(it.url), src = favSrc.get(it.url) || local;
-  var extra = !saved ? '' : !favSrc.has(it.url) ? ' data-alt="' + esc(saved) + '"' : src !== local ? ' data-fb="' + esc(local) + '"' : '';
-  return '<img class="fav" alt="" width="' + size + '" height="' + size + '" src="' + esc(src) + '"' +
-    (extra ? ' data-u="' + esc(it.url) + '"' + extra : '') + '>';
+function favicon(url, size) {
+  return '<img class="fav" alt="" width="' + size + '" height="' + size + '" src="' + esc(chrome.runtime.getURL('/_favicon/?pageUrl=' + encodeURIComponent(url) + '&size=32')) + '">';
 }
-function favPixels(img) {
-  var c = document.createElement('canvas');
-  c.width = c.height = 16;
-  var x = c.getContext('2d', { willReadFrequently: true });
-  x.drawImage(img, 0, 0, 16, 16);
-  return x.getImageData(0, 0, 16, 16).data.join();
-}
-var defaultFav = new Promise(function (done) {
-  var img = new Image();
-  img.onload = function () { done(favPixels(img)); };
-  img.onerror = function () { done(''); };
-  img.src = cachedFav('https://no-such-page.invalid/');
-});
-// Listeners, because inline onload/onerror are blocked by the extension CSP.
-document.addEventListener('load', function (e) {
-  var img = e.target;
-  if (img.tagName !== 'IMG' || !img.dataset.alt) return;
-  var u = img.dataset.u, alt = img.dataset.alt;
-  delete img.dataset.alt;
-  defaultFav.then(function (def) {
-    if (!def || favPixels(img) !== def) { favSrc.set(u, cachedFav(u)); return; }
-    favSrc.set(u, alt);
-    img.dataset.fb = cachedFav(u);
-    img.src = alt;
-  });
-}, true);
-document.addEventListener('error', function (e) {
-  var img = e.target;
-  if (img.tagName !== 'IMG' || !img.dataset.fb) return;
-  favSrc.set(img.dataset.u, img.dataset.fb);
-  img.src = img.dataset.fb;
-  delete img.dataset.fb;
-}, true);
 function isLive(g) { return g.chromeGroupId != null; }
 function daysSince(ts) { return Math.floor((Date.now() - (ts || Date.now())) / 864e5); }
 function isStale(g) { return !isLive(g) && g.status !== 'archive' && daysSince(g.lastActiveAt) >= (S.settings.staleDays || 14); }
@@ -291,7 +250,7 @@ function itemHTML(g, it, ctx) {
     : it.note ? '<div class="note" data-act="noteItem">' + icon('note', 13) + '<span dir="auto">' + esc(it.note) + '</span></div>' : '';
   var dupTitle = others.length ? 'שמור גם ב־' + others.map(function (x) { return x.name || 'קבוצה ללא שם'; }).join(', ') : '';
   return '<li class="' + cls + '" data-iid="' + it.id + '" data-nav tabindex="0" draggable="true" title="' + esc(it.url) + '">' +
-    '<span class="it-fav">' + favicon(it, 16) + (others.length ? '<span class="dupmark" title="' + esc(dupTitle) + '">' + icon('layers', 12) + '</span>' : '') + '</span>' +
+    '<span class="it-fav">' + favicon(it.url, 16) + (others.length ? '<span class="dupmark" title="' + esc(dupTitle) + '">' + icon('layers', 12) + '</span>' : '') + '</span>' +
     '<span class="it-main">' + title + (notOpen ? '<span class="h">לא פתוח</span>' : '<span class="h" dir="ltr">' + esc(hostOf(it.url)) + '</span>') + '</span>' +
     (active ? '<span class="it-now">הלשונית הפעילה</span>' : '') +
     '<span class="acts">' +
@@ -338,7 +297,7 @@ function groupHTML(g, items, ctx) {
     '<span class="g-age">' + (stale ? icon('clock', 12) : '') + '<span>' + esc(age) + '</span></span></div></div>';
   // בריבוע: אתר אחד לכל אייקון, עד ארבעה, ואחריהם מספר הפריטים
   var seen = new Set(), sites = g.items.filter(function (it) { var h = hostOf(it.url); return !seen.has(h) && seen.add(h); });
-  var favs = sites.slice(0, 4).map(function (it) { return '<span class="fv" title="' + esc(hostOf(it.url)) + '">' + favicon(it, 16) + '</span>'; }).join('');
+  var favs = sites.slice(0, 4).map(function (it) { return '<span class="fv" title="' + esc(hostOf(it.url)) + '">' + favicon(it.url, 16) + '</span>'; }).join('');
   var card = '<div class="g-card">' + '<div class="g-favs"><span class="fvs">' + favs + (sites.length > 4 ? '<span class="fv more" dir="ltr">+' + (sites.length - 4) + '</span>' : '') + '</span>' +
     '<span class="g-n">' + (g.items.length ? g.items.length + (g.items.length === 1 ? ' פריט' : ' פריטים') : 'ריקה') + '</span></div>' +
     '<div class="g-line"><p class="g-preview">' + runon(items) + '</p><span class="g-meta">' +
