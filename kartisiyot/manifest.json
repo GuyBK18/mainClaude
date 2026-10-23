@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "כרטיסיות",
   "description": "קבוצות הלשוניות של כרום ככרטיסים: שמות, סטטוס, משימה, הערות ופתיחה ישירה בקלוד.",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "minimum_chrome_version": "120",
   "permissions": ["tabs", "tabGroups", "storage", "unlimitedStorage", "sidePanel", "favicon", "contextMenus"],
   "optional_host_permissions": ["<all_urls>"],

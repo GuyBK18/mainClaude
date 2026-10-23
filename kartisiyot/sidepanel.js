@@ -1051,6 +1051,7 @@ chrome.storage.onChanged.addListener(function (changes, area) {
     if (auto) toast((auto.group.name ? 'הקבוצה ' + auto.group.name : 'קבוצה ללא שם') + (auto.reason === 'emptied' ? ' רוקנה ועברה לסל' : ' פורקה ועברה לסל'), auto.id);
   }
   if (changes.groups) { S.groups = changes.groups.newValue || []; applyLook(); }
+  if (changes.syncError && changes.syncError.newValue) toast(changes.syncError.newValue.msg);
   renderAll();
   if (ui.afterLoad && changes.groups) { var f = ui.afterLoad; ui.afterLoad = null; f(); }
 });

@@ -1,7 +1,7 @@
 // כרטיסיות - סקריפט רקע
 // מסנכרן את קבוצות הלשוניות של כרום עם הקבוצות השמורות בתוסף.
 // כל שינוי בנתונים עובר דרך תור אחד, כדי ששני שינויים לא ידרסו זה את זה.
-// מבנה הנתונים: chrome.storage.local, המפתח groups. גרסה 2 (schema) מוסיפה שדות אופציונליים בלבד:
+// מבנה הנתונים: chrome.storage.local, המפתח groups (מועתק ל-chrome.storage.sync, ראו סנכרון בין מחשבים). גרסה 2 (schema) מוסיפה שדות אופציונליים בלבד:
 // לקבוצה pinned, openPeak, restoreUntil, stripPos ולפריט note. נתונים מגרסה 1 משלימים ברירות מחדל ב-normGroup.
 
 var SCHEMA = 2;
@@ -85,7 +85,94 @@ async function load() {
   var r = await chrome.storage.local.get('groups');
   return (Array.isArray(r.groups) ? r.groups : []).filter(function (g) { return g && typeof g === 'object'; }).map(normGroup);
 }
-async function save(groups) { await chrome.storage.local.set({ groups: groups, schema: SCHEMA }); }
+async function save(groups) { await chrome.storage.local.set({ groups: groups, schema: SCHEMA }); await pushSync(); }
+
+// ---------- סנכרון בין מחשבים ----------
+// local נשאר עותק העבודה. ב-sync: gidx (סדר המזהים), g:<id> לכל קבוצה (מגבלה של 8KB למפתח) ו-settings.
+// סל המחזור, מזהי לשוניות וחלונות נשארים מקומיים. הכתיבה האחרונה מנצחת.
+var G_PREFIX = 'g:';
+var SYNC_ITEM_MAX = 8000;
+function syncForm(g) {
+  var c = copy(g);
+  delete c.chromeGroupId; delete c.windowId; delete c.openPeak; delete c.restoreUntil;
+  c.items.forEach(function (it) { delete it.tabId; if (/^data:/.test(it.favIconUrl)) it.favIconUrl = ''; });
+  return c;
+}
+async function pushSync() {
+  var l = await chrome.storage.local.get(['syncedOnce', 'syncError', 'syncSkip']);
+  if (!l.syncedOnce) return;
+  var errMsg = null, skip = [];
+  try {
+    var groups = await load();
+    var settings = (await chrome.storage.local.get('settings')).settings;
+    var cur = await chrome.storage.sync.get(null);
+    var want = { gidx: [] }, big = [];
+    groups.forEach(function (g) {
+      var c = syncForm(g), k = G_PREFIX + g.id;
+      if ((k + JSON.stringify(c)).length > SYNC_ITEM_MAX) { skip.push(g.id); big.push(g.name || 'ללא שם'); return; }
+      want.gidx.push(g.id); want[k] = c;
+    });
+    if (settings) want.settings = settings;
+    var put = {}, drop = [];
+    Object.keys(want).forEach(function (k) { if (JSON.stringify(cur[k]) !== JSON.stringify(want[k])) put[k] = want[k]; });
+    Object.keys(cur).forEach(function (k) { if (k.indexOf(G_PREFIX) === 0 && !(k in want)) drop.push(k); });
+    if (drop.length) await chrome.storage.sync.remove(drop);
+    if (Object.keys(put).length) await chrome.storage.sync.set(put);
+    if (big.length) errMsg = 'הקבוצה ' + big.join(', ') + ' גדולה מדי לסנכרון ונשארת רק במחשב הזה';
+  } catch (e) {
+    console.warn('[כרטיסיות] סנכרון', e);
+    errMsg = /QUOTA/i.test(String(e && e.message)) ? 'מכסת הסנכרון מלאה. השינויים נשמרים רק במחשב הזה' : 'הסנכרון נכשל. השינויים נשמרים רק במחשב הזה';
+  }
+  var patch = {};
+  if (JSON.stringify(skip) !== JSON.stringify(l.syncSkip || [])) patch.syncSkip = skip;
+  if (errMsg !== (l.syncError ? l.syncError.msg : null)) patch.syncError = errMsg ? { msg: errMsg, at: now() } : null;
+  if (Object.keys(patch).length) await chrome.storage.local.set(patch);
+}
+// מביא את מה שב-sync אל local. first: בהפעלה הראשונה ממזגים במקום להחליף.
+async function pullSync(first) {
+  var cur = await chrome.storage.sync.get(null);
+  if (!Array.isArray(cur.gidx)) return false;
+  var l = await chrome.storage.local.get(['settings', 'syncSkip']);
+  var local = await load();
+  var byId = new Map(local.map(function (g) { return [g.id, g]; }));
+  var out = [];
+  cur.gidx.forEach(function (id) {
+    var r = cur[G_PREFIX + id], o = byId.get(id);
+    if (!r) return;
+    if (o && first && (o.updatedAt || 0) > (r.updatedAt || 0)) { out.push(o); return; }
+    var g = copy(r);
+    if (o) {
+      g.chromeGroupId = o.chromeGroupId; g.windowId = o.windowId; g.openPeak = o.openPeak; g.restoreUntil = o.restoreUntil;
+      var tabs = new Map(o.items.map(function (it) { return [it.id, it.tabId]; }));
+      g.items.forEach(function (it) { if (tabs.has(it.id)) it.tabId = tabs.get(it.id); });
+    }
+    out.push(g);
+  });
+  var keep = new Set(l.syncSkip || []);
+  local.forEach(function (g) { if ((first || keep.has(g.id)) && cur.gidx.indexOf(g.id) < 0) out.push(g); });
+  var next = out.map(function (g) { return normGroup(g); });
+  var same = JSON.stringify(next.map(syncForm)) === JSON.stringify(local.map(syncForm));
+  var patch = {};
+  if (!same) patch.groups = next;
+  if (cur.settings && JSON.stringify(cur.settings) !== JSON.stringify(l.settings)) patch.settings = cur.settings;
+  if (!Object.keys(patch).length) return false;
+  await chrome.storage.local.set(patch);
+  return true;
+}
+async function initSync() {
+  var l = await chrome.storage.local.get('syncedOnce');
+  if (!l.syncedOnce) {
+    try { await pullSync(true); } catch (e) { console.warn('[כרטיסיות] סנכרון', e); return; }
+    await chrome.storage.local.set({ syncedOnce: true });
+    await pushSync();
+  } else if (await pullSync(false)) schedule();
+}
+chrome.storage.onChanged.addListener(function (changes, area) {
+  if (area === 'sync') enqueue(async function () {
+    if ((await chrome.storage.local.get('syncedOnce')).syncedOnce && await pullSync(false)) schedule();
+  });
+  else if (area === 'local' && changes.settings) enqueue(pushSync);
+});
 
 function newGroup(fields) {
   return normGroup(Object.assign({ status: 'none', task: '', items: [] }, fields || {}));
@@ -740,4 +827,5 @@ chrome.runtime.onStartup.addListener(function () { quietUntil = now() + STARTUP_
 if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(function () {});
 }
+enqueue(initSync);
 schedule(STARTUP_MS);
